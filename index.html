@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+  <meta name="description" content="An enterprise-grade, highly polished, and addictive Snake Trail Race board game. Play against AI or with a friend local.">
+  <title>Snake Trail Race - Premium Arcade Edition</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Toast overlay -->
+  <div class="toast-msg" id="toast">🎯 Message</div>
+
+  <div class="app">
+    <!-- HEADER BAR -->
+    <header class="header">
+      <div class="logo">
+        <div class="logo-icon">🐍</div>
+        <h1 class="logo-text">SNAKE <span>TRAIL</span></h1>
+      </div>
+      <div class="header-controls">
+        <button class="btn-icon" id="statsToggleBtn" title="View Stats & Logs">📊</button>
+        <button class="btn-icon" id="muteBtn" title="Toggle Sound">🔊</button>
+        <button class="btn-icon" id="restart" title="Restart Game">↻</button>
+      </div>
+    </header>
+
+    <!-- SETUP SCREEN -->
+    <div class="setup-screen" id="setupScreen">
+      <h2 class="setup-title">SNAKE TRAIL</h2>
+      <p class="setup-subtitle">Select Mode & Characters</p>
+      
+      <!-- Mode Selection Tabs -->
+      <div class="mode-selector">
+        <button class="mode-tab active" id="modeAi">
+          🤖 VS Computer
+        </button>
+        <button class="mode-tab" id="modePvp">
+          👥 Pass & Play
+        </button>
+      </div>
+
+      <!-- LEVEL SELECTOR (For Solo vs AI) -->
+      <div class="setup-control-group" id="levelSelectorGroup">
+        <label>SELECT RACE LEVEL</label>
+        <div class="selector-control">
+          <button type="button" class="btn-icon" id="prevLevelBtn">&lt;</button>
+          <span class="selector-value" id="levelValue">Level 1</span>
+          <button type="button" class="btn-icon" id="nextLevelBtn">&gt;</button>
+        </div>
+        <p class="selector-hint" id="levelHint">Board Shape: Serpentine Grid (L1)</p>
+      </div>
+
+      <!-- BOARD SHAPE SELECTOR (For PVP) -->
+      <div class="setup-control-group" id="shapeSelectorGroup" style="display: none;">
+        <label>SELECT BOARD SHAPE</label>
+        <div class="selector-control">
+          <button type="button" class="btn-icon" id="prevShapeBtn">&lt;</button>
+          <span class="selector-value" id="shapeValue">Classic Shape (L1)</span>
+          <button type="button" class="btn-icon" id="nextShapeBtn">&gt;</button>
+        </div>
+        <p class="selector-hint" id="shapeHint">Cleared level shapes unlocked: 1</p>
+      </div>
+
+      <!-- Player customization cards -->
+      <div class="players-config">
+        <!-- Red Player -->
+        <div class="player-config-card red">
+          <div class="player-config-header">
+            <span class="player-config-title red-indicator">🔴 PLAYER 1 (RED)</span>
+          </div>
+          <div class="input-group">
+            <label for="redNameInput">Racer Name</label>
+            <input type="text" id="redNameInput" value="RED RACER" maxlength="10">
+          </div>
+          <div class="input-group">
+            <label>Avatar</label>
+            <div class="avatar-grid red" id="redAvatars"></div>
+          </div>
+        </div>
+
+        <!-- Blue Player -->
+        <div class="player-config-card blue" id="bluePlayerConfig" style="opacity: 0.5; pointer-events: none;">
+          <div class="player-config-header">
+            <span class="player-config-title blue-indicator">🔵 PLAYER 2 (BLUE)</span>
+          </div>
+          <div class="input-group">
+            <label for="blueNameInput">Racer Name</label>
+            <input type="text" id="blueNameInput" value="AI COMP" maxlength="10">
+          </div>
+          <div class="input-group">
+            <label>Avatar</label>
+            <div class="avatar-grid blue" id="blueAvatars"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Start button -->
+      <button class="btn-primary" id="startGameBtn">
+        🚀 START THE RACE
+      </button>
+    </div>
+
+    <!-- MAIN GAME SCREEN (HIDDEN INITIALLY) -->
+    <div class="screen-wrapper" id="gameScreen" style="display: none;">
+      <!-- TOP HUD: Compact Player Stats -->
+      <div class="hud-top-bar">
+        <!-- Red Racer Card -->
+        <div class="hud-player red" id="redCard">
+          <div class="hud-player-meta">
+            <div class="hud-avatar-name">
+              <span class="hud-emoji" id="redAvatarBadge">🐍</span>
+              <span class="hud-name" id="redNameCard">RED RACER</span>
+            </div>
+            <span class="hud-position" id="redPosition">START</span>
+          </div>
+          <div class="hud-progress-bar">
+            <div class="hud-progress-fill" id="redProgress"></div>
+          </div>
+        </div>
+
+        <div class="hud-divider">VS</div>
+
+        <!-- Blue Racer Card -->
+        <div class="hud-player blue" id="blueCard">
+          <div class="hud-player-meta">
+            <div class="hud-avatar-name">
+              <span class="hud-emoji" id="blueAvatarBadge">🐉</span>
+              <span class="hud-name" id="blueNameCard">BLUE RACER</span>
+            </div>
+            <span class="hud-position" id="bluePosition">START</span>
+          </div>
+          <div class="hud-progress-bar">
+            <div class="hud-progress-fill" id="blueProgress"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- THE BOARD CANVAS -->
+      <div class="board-wrapper">
+        <canvas id="canvas" width="380" height="460"></canvas>
+      </div>
+      
+      <!-- CONTROLS & COMPACT MESSAGE FEED (CENTERED STACK) -->
+      <div class="hud-controls-bar">
+        <!-- Centered 3D Dice Box -->
+        <div class="dice-box" id="roll">
+          <span id="dice" style="display: none;">?</span>
+          <div class="scene">
+            <div class="cube" id="cube">
+              <!-- Front: 1 -->
+              <div class="cube-face front" data-face="1">
+                <span class="pip"></span>
+              </div>
+              <!-- Back: 6 -->
+              <div class="cube-face back" data-face="6">
+                <span class="pip"></span><span class="pip"></span>
+                <span class="pip"></span><span class="pip"></span>
+                <span class="pip"></span><span class="pip"></span>
+              </div>
+              <!-- Right: 3 -->
+              <div class="cube-face right" data-face="3">
+                <span class="pip"></span><span class="pip"></span>
+                <span class="pip"></span>
+              </div>
+              <!-- Left: 4 -->
+              <div class="cube-face left" data-face="4">
+                <span class="pip"></span><span class="pip"></span>
+                <span class="pip"></span><span class="pip"></span>
+              </div>
+              <!-- Top: 2 -->
+              <div class="cube-face top" data-face="2">
+                <span class="pip"></span><span class="pip"></span>
+              </div>
+              <!-- Bottom: 5 -->
+              <div class="cube-face bottom" data-face="5">
+                <span class="pip"></span><span class="pip"></span>
+                <span class="pip"></span><span class="pip"></span>
+                <span class="pip"></span>
+              </div>
+            </div>
+          </div>
+          <span class="dice-label" id="diceLabel">TAP ROLL</span>
+        </div>
+        
+        <!-- Centered message feeds -->
+        <div class="message-box">
+          <div class="turn-status-text">
+            <span class="turn-bullet" id="turnBullet"></span>
+            <span id="turnName">🔴 RED PLAYER'S TURN</span>
+            <span id="turnStatus" style="margin-left: 6px; color: var(--text-muted); font-weight: 700;">&bull; AWAITING ROLL</span>
+          </div>
+          <div class="msg-title" id="mainMessage">Roll the dice to start the race!</div>
+          <div class="msg-desc" id="hint">Pro-Tip: Land on opponent to knock them back!</div>
+        </div>
+      </div>
+
+      <!-- COMPACT MAP LEGEND -->
+      <footer class="legend-panel">
+        <span class="legend-item"><span class="legend-dot" style="color: var(--green);"></span>Bonus</span>
+        <span class="legend-item"><span class="legend-dot" style="color: var(--orange);"></span>Trap</span>
+        <span class="legend-item"><span class="legend-dot" style="color: var(--red);"></span>Reset</span>
+        <span class="legend-item"><span class="legend-dot" style="color: var(--gold);"></span>Goal</span>
+      </footer>
+    </div>
+  </div>
+
+  <!-- SLIDING DRAWER SYSTEM FOR STATS & LOGS -->
+  <div class="drawer" id="statsDrawer">
+    <div class="drawer-overlay" id="drawerOverlay"></div>
+    <div class="drawer-content">
+      <div class="drawer-header">
+        <h3>Race Details</h3>
+        <button class="btn-icon" id="drawerCloseBtn" style="border: none; background: transparent;">✕</button>
+      </div>
+      <div class="drawer-body">
+        <!-- Cumulative Stats -->
+        <section class="stats-panel">
+          <h4 class="panel-title">Cumulative Records</h4>
+          <div class="stats-grid">
+            <div class="stat-item">
+              <div class="stat-val" id="statGames">0</div>
+              <div class="stat-lbl">Games</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-val" id="statWins">0</div>
+              <div class="stat-lbl">P1 Wins</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-val" id="statKos">0</div>
+              <div class="stat-lbl">KOs</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-val" id="statTraps">0</div>
+              <div class="stat-lbl">Traps Hit</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Live game log feed -->
+        <section class="game-log-panel" style="flex-grow: 1; display: flex; flex-direction: column;">
+          <h4 class="panel-title">Race Log Feed</h4>
+          <div class="log-container" id="logContainer">
+            <div class="log-entry">Waiting for race launch...</div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- WINNER NOTIFICATION OVERLAY -->
+  <div class="modal" id="modal">
+    <div class="modal-box">
+      <div class="trophy">🏆</div>
+      <h2 class="win-title" id="winner">RED RACER WINS!</h2>
+      <p class="win-sub">The race has finished in style!</p>
+      <button class="btn-primary" id="playAgain">
+        🔄 PLAY AGAIN
+      </button>
+    </div>
+  </div>
+
+  <!-- Game dependencies load -->
+  <script src="sound.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
