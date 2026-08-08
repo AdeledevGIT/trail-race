@@ -1300,4 +1300,53 @@ window.addEventListener("DOMContentLoaded", () => {
   
   // Kick off render loop
   requestAnimationFrame(renderLoop);
+
+  // Register Service Worker for PWA (offline play & installation)
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js")
+      .then(() => console.log("[PWA] Service Worker Registered!"))
+      .catch((err) => console.error("[PWA] Service Worker Registration Failed", err));
+  }
+});
+
+// PWA Custom Installation Flow
+let deferredPrompt;
+const pwaInstallBtn = document.getElementById("pwaInstallBtn");
+
+window.addEventListener("beforeinstallprompt", (e) => {
+  // Prevent browser's automatic prompt banner
+  e.preventDefault();
+  // Save the event to trigger it on user request
+  deferredPrompt = e;
+  // Show our custom Install button in the header
+  if (pwaInstallBtn) {
+    pwaInstallBtn.style.display = "flex";
+  }
+});
+
+if (pwaInstallBtn) {
+  pwaInstallBtn.addEventListener("click", () => {
+    // Hide our custom install button
+    pwaInstallBtn.style.display = "none";
+    // Trigger install prompt dialog
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then((choiceResult) => {
+        if (choiceResult.outcome === "accepted") {
+          console.log("[PWA] User installed the app.");
+        } else {
+          console.log("[PWA] User dismissed the installation.");
+        }
+        deferredPrompt = null;
+      });
+    }
+  });
+}
+
+window.addEventListener("appinstalled", () => {
+  console.log("[PWA] App installed successfully!");
+  if (pwaInstallBtn) {
+    pwaInstallBtn.style.display = "none";
+  }
+  showToast("🎉 Added to Home Screen successfully!");
 });

@@ -6,6 +6,14 @@
   <meta name="description" content="An enterprise-grade, highly polished, and addictive Snake Trail Race board game. Play against AI or with a friend local.">
   <title>Snake Trail Race - Premium Arcade Edition</title>
   
+  <!-- PWA & Mobile Install configurations -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#080a11">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Snake Trail">
+  <link rel="apple-touch-icon" href="icon.jpg">
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -25,6 +33,7 @@
         <h1 class="logo-text">SNAKE <span>TRAIL</span></h1>
       </div>
       <div class="header-controls">
+        <button class="btn-icon" id="pwaInstallBtn" title="Install App" style="display: none;">📥</button>
         <button class="btn-icon" id="statsToggleBtn" title="View Stats & Logs">📊</button>
         <button class="btn-icon" id="muteBtn" title="Toggle Sound">🔊</button>
         <button class="btn-icon" id="restart" title="Restart Game">↻</button>
