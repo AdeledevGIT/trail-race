@@ -320,7 +320,7 @@ function drawMiniBoard(canvasId, level) {
   ctxMini.clearRect(0, 0, w, h);
   
   const cols = 5 + ((level - 1) % 4);
-  const rows = 7;
+  const rows = Math.ceil((FINISH + 1) / cols);
   const left = 15;
   const right = 15;
   const top = 15;
@@ -395,13 +395,22 @@ function buildBoard() {
 function buildBoardForLevel(level) {
   gameState.spaces = [];
   const cols = 5 + ((level - 1) % 4); // 5, 6, 7, or 8 columns
-  const rows = 7;
+  const rows = Math.ceil((FINISH + 1) / cols); // Dynamically calculate required rows
   const left = 35;
   const right = 35;
   const top = 35;
   const bottom = 35;
   const width = canvas.width;
-  const height = canvas.height;
+  
+  // Dynamic Virtual Height for scrolling boards
+  const algo = (level - 1) % 5;
+  let virtualHeight = canvas.height;
+  if (algo === 0 || algo === 2 || algo === 4) {
+    virtualHeight = Math.max(900, rows * 110); // Give plenty of vertical space
+  } else if (algo === 1 || algo === 3) {
+    virtualHeight = Math.max(550, width + 50); // Squarish for spirals/hourglass
+  }
+  gameState.virtualHeight = virtualHeight;
 
   // 1. Generate Specials deterministically based on Level seed
   gameState.levelSpecials = {};
@@ -487,14 +496,12 @@ function buildBoardForLevel(level) {
   }
 
   // 2. Map coordinates based on dynamic Level Algorithms
-  const algo = (level - 1) % 5;
-
   for (let i = 0; i <= FINISH; i++) {
     let px, py;
     if (algo === 0) {
       // Algorithm 0: Bottom-up Grid serpentine
       const gapX = (width - left - right) / (cols - 1);
-      const gapY = (height - top - bottom) / (rows - 1);
+      const gapY = (virtualHeight - top - bottom) / (rows - 1);
       const r = Math.floor(i / cols);
       const idx = i % cols;
       const col = r % 2 === 0 ? idx : cols - 1 - idx;
@@ -505,8 +512,8 @@ function buildBoardForLevel(level) {
     } else if (algo === 1) {
       // Algorithm 1: Helix Spiral (inward spiral)
       const centerX = width / 2;
-      const centerY = height / 2;
-      const maxRadius = Math.min(width, height) / 2 - 28;
+      const centerY = virtualHeight / 2;
+      const maxRadius = Math.min(width, virtualHeight) / 2 - 28;
       const angle = (i * 0.44) + 0.55;
       const radius = maxRadius * (1 - (i / (FINISH + 8)));
       px = centerX + Math.cos(angle) * radius;
@@ -514,7 +521,7 @@ function buildBoardForLevel(level) {
 
     } else if (algo === 2) {
       // Algorithm 2: Sine Wave winding upwards
-      const startY = height - bottom;
+      const startY = virtualHeight - bottom;
       const endY = top;
       const gapY = (startY - endY) / FINISH;
       py = startY - i * gapY;
@@ -525,9 +532,9 @@ function buildBoardForLevel(level) {
     } else if (algo === 3) {
       // Algorithm 3: Hourglass figure-8 Loop
       const centerX = width / 2;
-      const centerY = height / 2;
+      const centerY = virtualHeight / 2;
       const scaleX = width / 2 - 32;
-      const scaleY = height / 2 - 40;
+      const scaleY = virtualHeight / 2 - 40;
       const t = (i / FINISH) * Math.PI * 2.1;
       px = centerX + scaleX * Math.sin(t);
       py = centerY + scaleY * Math.sin(2 * t);
@@ -536,7 +543,7 @@ function buildBoardForLevel(level) {
       // Algorithm 4: Vertical serpentine cols
       const vCols = 6;
       const gapX = (width - left - right) / (vCols - 1);
-      const gapY = (height - top - bottom) / (vCols - 1);
+      const gapY = (virtualHeight - top - bottom) / (vCols - 1);
       const colIdx = Math.floor(i / vCols);
       const cellIdx = i % vCols;
       const rowIdx = colIdx % 2 === 0 ? vCols - 1 - cellIdx : cellIdx;
@@ -635,11 +642,16 @@ function updateCamera() {
   const MARGIN = 120; // pixels of space above/below token
 
   // We want the active player centered, but clamp so board never scrolls past edges
-  const totalBoardH = canvas.height; // board is drawn within canvas coords 0..H
+  const totalBoardH = gameState.virtualHeight || canvas.height;
   const maxScroll = Math.max(0, totalBoardH - VIEW_H);
 
   // Desired scroll: center token vertically in viewport
   let desired = active.visualY - VIEW_H / 2;
+  
+  // Add a slight offset to look ahead (so we see more of where we are going)
+  // For standard maps, player goes UP, so look higher (lower Y coords)
+  desired -= 50;
+
   desired = Math.max(0, Math.min(desired, maxScroll));
 
   camera.targetY = desired;
