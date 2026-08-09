@@ -18,12 +18,12 @@ const specials = {
 
 // 6 Available Avatars
 const AVATARS = [
-  { emoji: "🐍", label: "Neon Cobra", color: "#ff4760" },
-  { emoji: "🐉", label: "Cyber Dragon", color: "#2893ff" },
-  { emoji: "🦎", label: "Astro Lizard", color: "#10e394" },
-  { emoji: "🦂", label: "Bio Scorpion", color: "#ff7e36" },
-  { emoji: "🐙", label: "Deepwater Hydra", color: "#ffc93c" },
-  { emoji: "🦅", label: "Space Phoenix", color: "#c026d3" }
+  { emoji: "🐍", label: "Neon Cobra",     color: "#ff3a5c" },
+  { emoji: "🐉", label: "Cyber Dragon",   color: "#00b8ff" },
+  { emoji: "🦎", label: "Astro Lizard",   color: "#0dffb0" },
+  { emoji: "🦂", label: "Bio Scorpion",   color: "#ff6b00" },
+  { emoji: "🐙", label: "Deepwater Hydra",color: "#c850ff" },
+  { emoji: "🦅", label: "Space Phoenix",  color: "#ffcc00" }
 ];
 
 /* ==========================================================================
@@ -35,7 +35,7 @@ let gameState = {
     {
       name: "RED PLAYER",
       emoji: "🐍",
-      color: "#ff4760",
+      color: "#ff3a5c",
       position: 0,
       visualX: 35,
       visualY: 42,
@@ -45,7 +45,7 @@ let gameState = {
     {
       name: "BLUE PLAYER",
       emoji: "🐉",
-      color: "#2893ff",
+      color: "#00b8ff",
       position: 0,
       visualX: 35,
       visualY: 42,
@@ -560,13 +560,42 @@ function renderLoop() {
 }
 
 function drawBoardBackgroundDecor() {
-  // Ambient grid dots/stars inside canvas
+  const W = canvas.width;
+  const H = canvas.height;
+
+  // Deep background
   ctx.save();
-  ctx.fillStyle = "rgba(255, 255, 255, 0.04)";
-  for (let x = 20; x < canvas.width; x += 40) {
-    for (let y = 20; y < canvas.height; y += 40) {
+  const bgGrad = ctx.createLinearGradient(0, 0, W, H);
+  bgGrad.addColorStop(0, "#07080f");
+  bgGrad.addColorStop(0.5, "#0a0c18");
+  bgGrad.addColorStop(1, "#07080f");
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Ambient purple radial glow top-right
+  ctx.save();
+  const p1 = ctx.createRadialGradient(W * 0.8, H * 0.1, 0, W * 0.8, H * 0.1, W * 0.6);
+  p1.addColorStop(0, "rgba(200,80,255,0.1)");
+  p1.addColorStop(1, "transparent");
+  ctx.fillStyle = p1;
+  ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+
+  // Ambient blue radial glow bottom-left
+  ctx.save();
+  const p2 = ctx.createRadialGradient(W * 0.15, H * 0.85, 0, W * 0.15, H * 0.85, W * 0.5);
+  p2.addColorStop(0, "rgba(0,184,255,0.08)");
+  p2.addColorStop(1, "transparent");
+  ctx.fillStyle = p2;
+  ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+
+  // Dot grid
+  ctx.fillStyle = "rgba(255,255,255,0.025)";
+  for (let x = 20; x < W; x += 36) {
+    for (let y = 20; y < H; y += 36) {
       ctx.beginPath();
-      ctx.arc(x, y, 1, 0, Math.PI * 2);
+      ctx.arc(x, y, 0.8, 0, Math.PI * 2);
       ctx.fill();
     }
   }
@@ -576,84 +605,152 @@ function drawBoardBackgroundDecor() {
 function drawTrail() {
   if (gameState.spaces.length === 0) return;
 
-  // Draw glowing outer track line
+  // Outer fat glow track
   ctx.save();
   ctx.beginPath();
   gameState.spaces.forEach((sp, idx) => {
     if (idx === 0) ctx.moveTo(sp.x, sp.y);
     else ctx.lineTo(sp.x, sp.y);
   });
-  ctx.lineWidth = 14;
+  ctx.lineWidth = 22;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-  ctx.strokeStyle = "rgba(40, 147, 255, 0.15)";
-  ctx.shadowBlur = 15;
-  ctx.shadowColor = "rgba(40, 147, 255, 0.3)";
+  ctx.strokeStyle = "rgba(200,80,255,0.07)";
+  ctx.shadowBlur = 28;
+  ctx.shadowColor = "rgba(200,80,255,0.2)";
   ctx.stroke();
 
-  // Draw inner track line
+  // Mid glow track
   ctx.beginPath();
   gameState.spaces.forEach((sp, idx) => {
     if (idx === 0) ctx.moveTo(sp.x, sp.y);
     else ctx.lineTo(sp.x, sp.y);
   });
-  ctx.lineWidth = 4;
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
+  ctx.lineWidth = 10;
+  ctx.strokeStyle = "rgba(0,184,255,0.08)";
+  ctx.shadowBlur = 12;
+  ctx.shadowColor = "rgba(0,184,255,0.2)";
+  ctx.stroke();
+
+  // Crisp inner white track
+  ctx.beginPath();
+  gameState.spaces.forEach((sp, idx) => {
+    if (idx === 0) ctx.moveTo(sp.x, sp.y);
+    else ctx.lineTo(sp.x, sp.y);
+  });
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = "rgba(255,255,255,0.09)";
+  ctx.shadowBlur = 0;
   ctx.stroke();
   ctx.restore();
 }
 
 function drawSpaces() {
+  const R = 17; // tile radius
+
   gameState.spaces.forEach((space, index) => {
-    // Glass inner style
     ctx.save();
-    
-    // Glass Shadow
+    const isSpecial = space.type !== "normal";
+
+    // --- Drop shadow ---
     ctx.beginPath();
-    ctx.arc(space.x, space.y + 2, 19, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+    ctx.arc(space.x, space.y + 3, R, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(0,0,0,0.45)";
     ctx.fill();
 
-    // Glow accent for special tiles
-    const isSpecial = space.type !== "normal";
+    // --- Glow for specials ---
     if (isSpecial) {
-      ctx.shadowBlur = 8;
+      ctx.shadowBlur = 18;
       ctx.shadowColor = space.color;
+    } else {
+      ctx.shadowBlur = 0;
     }
 
-    // Glass Base
-    ctx.beginPath();
-    ctx.arc(space.x, space.y, 18, 0, Math.PI * 2);
-    ctx.fillStyle = isSpecial ? space.color : "rgba(22, 28, 45, 0.8)";
-    ctx.fill();
+    // --- Tile fill ---
+    let fillColor;
+    if (space.type === "start")  fillColor = "#0dffb0";
+    else if (space.type === "finish") fillColor = "#ffcc00";
+    else if (space.type === "bonus")  fillColor = "#0dffb0";
+    else if (space.type === "trap")   fillColor = "#ff6b00";
+    else if (space.type === "reset")  fillColor = "#ff3a5c";
+    else fillColor = null;
 
-    // Border
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = isSpecial ? "rgba(255, 255, 255, 0.6)" : "rgba(255, 255, 255, 0.08)";
-    ctx.stroke();
-    
+    if (fillColor) {
+      // Filled arcade tile
+      ctx.beginPath();
+      ctx.arc(space.x, space.y, R, 0, Math.PI * 2);
+      const g = ctx.createRadialGradient(space.x - 4, space.y - 5, 1, space.x, space.y, R);
+      g.addColorStop(0, lighten(fillColor, 60));
+      g.addColorStop(0.5, fillColor);
+      g.addColorStop(1, darken(fillColor, 40));
+      ctx.fillStyle = g;
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "rgba(255,255,255,0.6)";
+      ctx.stroke();
+    } else {
+      // Normal tile
+      ctx.beginPath();
+      ctx.arc(space.x, space.y, R, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(18,20,38,0.92)";
+      ctx.fill();
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = "rgba(255,255,255,0.065)";
+      ctx.stroke();
+    }
+
     ctx.restore();
 
-    // Text Label/Index drawing
+    // --- Label text ---
     ctx.save();
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillStyle = isSpecial ? "#080a11" : "#9ca3af";
-    ctx.font = isSpecial ? "bold 9px 'Plus Jakarta Sans'" : "600 11px 'Outfit'";
 
     if (space.type === "start") {
-      ctx.font = "bold 8px 'Outfit'";
+      ctx.font = "bold 7.5px Nunito";
+      ctx.fillStyle = "#07080f";
       ctx.fillText("START", space.x, space.y);
     } else if (space.type === "finish") {
-      ctx.font = "bold 8px 'Outfit'";
+      ctx.font = "bold 8px Nunito";
+      ctx.fillStyle = "#07080f";
       ctx.fillText("GOAL", space.x, space.y);
-    } else if (space.type === "bonus" || space.type === "trap" || space.type === "reset") {
-      ctx.fillText(space.label.replace(/[^\d+-]/g, ""), space.x, space.y);
+    } else if (space.type === "bonus") {
+      const val = (space.label.match(/\d+/) || [""])[0];
+      ctx.font = "bold 10px Nunito";
+      ctx.fillStyle = "#07080f";
+      ctx.fillText("+" + val, space.x, space.y);
+    } else if (space.type === "trap") {
+      const val = (space.label.match(/-?\d+/) || [""])[0];
+      ctx.font = "bold 10px Nunito";
+      ctx.fillStyle = "#fff";
+      ctx.fillText(val, space.x, space.y);
+    } else if (space.type === "reset") {
+      ctx.font = "bold 7px Nunito";
+      ctx.fillStyle = "#fff";
+      ctx.fillText("BACK", space.x, space.y);
     } else {
+      ctx.font = "600 10px Nunito";
+      ctx.fillStyle = "rgba(255,255,255,0.18)";
       ctx.fillText(index.toString(), space.x, space.y);
     }
     ctx.restore();
   });
+}
+
+// Color helpers
+function lighten(hex, amount) {
+  const num = parseInt(hex.slice(1), 16);
+  const r = Math.min(255, (num >> 16) + amount);
+  const g = Math.min(255, ((num >> 8) & 0x00ff) + amount);
+  const b = Math.min(255, (num & 0x0000ff) + amount);
+  return `rgb(${r},${g},${b})`;
+}
+function darken(hex, amount) {
+  const num = parseInt(hex.slice(1), 16);
+  const r = Math.max(0, (num >> 16) - amount);
+  const g = Math.max(0, ((num >> 8) & 0x00ff) - amount);
+  const b = Math.max(0, (num & 0x0000ff) - amount);
+  return `rgb(${r},${g},${b})`;
 }
 
 function updateAndDrawTokens() {
@@ -683,47 +780,64 @@ function updateAndDrawTokens() {
 
   // Smooth slide lerping
   gameState.players.forEach((player, idx) => {
-    player.visualX = player.visualX * 0.82 + player.targetX * 0.18;
-    player.visualY = player.visualY * 0.82 + player.targetY * 0.18;
+    player.visualX = player.visualX * 0.78 + player.targetX * 0.22;
+    player.visualY = player.visualY * 0.78 + player.targetY * 0.22;
 
-    // Draw Token glow & shape
+    const isActive = gameState.currentPlayer === idx && !gameState.gameOver;
+    const TOKEN_R = 16;
+
     ctx.save();
-    
-    // Token Shadow
+
+    // Big outer glow ring for active player
+    if (isActive) {
+      ctx.beginPath();
+      ctx.arc(player.visualX, player.visualY, TOKEN_R + 7, 0, Math.PI * 2);
+      ctx.strokeStyle = player.color + "55";
+      ctx.lineWidth = 4;
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = player.color;
+      ctx.stroke();
+    }
+
+    // Drop shadow
+    ctx.shadowBlur = 0;
     ctx.beginPath();
-    ctx.arc(player.visualX, player.visualY + 4, 15, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+    ctx.arc(player.visualX, player.visualY + 5, TOKEN_R, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
     ctx.fill();
 
-    // Glow aura
-    ctx.shadowBlur = 15;
+    // Token glow aura
+    ctx.shadowBlur = isActive ? 28 : 14;
     ctx.shadowColor = player.color;
 
-    // Draw radial gradient 3D sphere
+    // 3D sphere gradient
     const grad = ctx.createRadialGradient(
-      player.visualX - 4, player.visualY - 4, 2,
-      player.visualX, player.visualY, 15
+      player.visualX - 5, player.visualY - 5, 1,
+      player.visualX, player.visualY, TOKEN_R
     );
     grad.addColorStop(0, "#ffffff");
-    grad.addColorStop(0.3, player.color);
-    grad.addColorStop(1, adjustColorBrightness(player.color, -30));
+    grad.addColorStop(0.25, lighten(player.color, 50));
+    grad.addColorStop(0.7, player.color);
+    grad.addColorStop(1, darken(player.color, 60));
 
     ctx.beginPath();
-    ctx.arc(player.visualX, player.visualY, 14, 0, Math.PI * 2);
+    ctx.arc(player.visualX, player.visualY, TOKEN_R, 0, Math.PI * 2);
     ctx.fillStyle = grad;
     ctx.fill();
 
-    // White rim
-    ctx.lineWidth = 1.5;
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
+    // Bright rim
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "rgba(255,255,255,0.85)";
+    ctx.shadowBlur = 0;
     ctx.stroke();
 
-    // Render Emoji/Icon inside Token
     ctx.restore();
+
+    // Emoji
     ctx.save();
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.font = "14px Arial";
+    ctx.font = "13px Arial";
     ctx.fillText(player.emoji, player.visualX, player.visualY + 1);
     ctx.restore();
 
@@ -804,6 +918,13 @@ function updateHUD() {
     turnStatus.textContent = "MOVING...";
   } else {
     turnStatus.textContent = gameState.mode === "ai" && gameState.currentPlayer === 1 ? "COMPUTER THINKING..." : "AWAITING ROLL";
+  }
+
+  // Level badge
+  const lvlBadge = document.getElementById("levelBadge");
+  if (lvlBadge) {
+    const lvl = gameState.mode === "ai" ? gameState.currentLevel : gameState.selectedShapeLevel;
+    lvlBadge.textContent = `LVL ${lvl}`;
   }
 }
 
