@@ -505,6 +505,18 @@ h1, h2, h3, h4 {
   transform: scale(0.97);
 }
 
+.btn-secondary-action {
+  background: linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04));
+  border: 1.5px solid rgba(255,255,255,0.15);
+  color: var(--text-primary);
+  box-shadow: none;
+}
+
+.btn-secondary-action:hover {
+  background: rgba(255,255,255,0.12);
+  box-shadow: none;
+}
+
 /* =============================================
    GAME SCREEN WRAPPER
    ============================================= */

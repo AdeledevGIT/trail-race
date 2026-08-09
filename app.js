@@ -16,14 +16,14 @@ const specials = {
   39: { type: "trap", label: "💀 -10", effect: -10, color: "#ff7e36" }
 };
 
-// 6 Available Avatars
+// 6 Available Avatars using FontAwesome
 const AVATARS = [
-  { emoji: "🐍", label: "Neon Cobra",     color: "#ff3a5c" },
-  { emoji: "🐉", label: "Cyber Dragon",   color: "#00b8ff" },
-  { emoji: "🦎", label: "Astro Lizard",   color: "#0dffb0" },
-  { emoji: "🦂", label: "Bio Scorpion",   color: "#ff6b00" },
-  { emoji: "🐙", label: "Deepwater Hydra",color: "#c850ff" },
-  { emoji: "🦅", label: "Space Phoenix",  color: "#ffcc00" }
+  { emoji: "\uf135", html: '<i class="fa-solid fa-rocket"></i>', label: "Neon Rocket",   color: "#ff3a5c" },
+  { emoji: "\uf753", html: '<i class="fa-solid fa-meteor"></i>', label: "Cyber Meteor",  color: "#00b8ff" },
+  { emoji: "\uf0e7", html: '<i class="fa-solid fa-bolt"></i>',   label: "Astro Bolt",    color: "#0dffb0" },
+  { emoji: "\uf6e2", html: '<i class="fa-solid fa-ghost"></i>',  label: "Bio Ghost",     color: "#ff6b00" },
+  { emoji: "\uf544", html: '<i class="fa-solid fa-robot"></i>',  label: "Mecha Robot",   color: "#c850ff" },
+  { emoji: "\uf714", html: '<i class="fa-solid fa-skull"></i>',  label: "Space Skull",   color: "#ffcc00" }
 ];
 
 /* ==========================================================================
@@ -34,23 +34,27 @@ let gameState = {
   players: [
     {
       name: "RED PLAYER",
-      emoji: "🐍",
+      emoji: "\uf135",
+      html: '<i class="fa-solid fa-rocket"></i>',
       color: "#ff3a5c",
       position: 0,
       visualX: 35,
       visualY: 42,
       targetX: 35,
-      targetY: 42
+      targetY: 42,
+      frozenTurns: 0
     },
     {
       name: "BLUE PLAYER",
-      emoji: "🐉",
+      emoji: "\uf753",
+      html: '<i class="fa-solid fa-meteor"></i>',
       color: "#00b8ff",
       position: 0,
       visualX: 35,
       visualY: 42,
       targetX: 35,
-      targetY: 42
+      targetY: 42,
+      frozenTurns: 0
     }
   ],
   currentPlayer: 0,
@@ -69,6 +73,12 @@ let gameState = {
     kos: 0,
     traps: 0
   }
+};
+
+// Camera state for smooth panning
+const camera = {
+  y: 0,         // current rendered offset
+  targetY: 0    // destination we lerp toward
 };
 
 /* ==========================================================================
@@ -114,25 +124,19 @@ const mainMessage = document.getElementById("mainMessage");
 const hint = document.getElementById("hint");
 const toast = document.getElementById("toast");
 
-// Logging and stats elements
-const logContainer = document.getElementById("logContainer");
-const statGames = document.getElementById("statGames");
-const statWins = document.getElementById("statWins");
-const statKos = document.getElementById("statKos");
-const statTraps = document.getElementById("statTraps");
-
 // Headers and Modals
 const muteBtn = document.getElementById("muteBtn");
 const restartBtn = document.getElementById("restart");
+const backBtn = document.getElementById("backBtn");
 const modal = document.getElementById("modal");
 const winnerTitle = document.getElementById("winner");
 const playAgainBtn = document.getElementById("playAgain");
 
-// Stats sliding drawer elements
-const statsToggleBtn = document.getElementById("statsToggleBtn");
-const statsDrawer = document.getElementById("statsDrawer");
-const drawerCloseBtn = document.getElementById("drawerCloseBtn");
-const drawerOverlay = document.getElementById("drawerOverlay");
+// Punish Modal
+const punishModal = document.getElementById("punishModal");
+const btnPunishKo = document.getElementById("btnPunishKo");
+const btnPunishPush = document.getElementById("btnPunishPush");
+const btnPunishForgive = document.getElementById("btnPunishForgive");
 
 // Level and Shape Selectors
 const levelSelectorGroup = document.getElementById("levelSelectorGroup");
@@ -145,6 +149,8 @@ const prevShapeBtn = document.getElementById("prevShapeBtn");
 const nextShapeBtn = document.getElementById("nextShapeBtn");
 const shapeValue = document.getElementById("shapeValue");
 const shapeHint = document.getElementById("shapeHint");
+const levelPreviewCanvas = document.getElementById("levelPreviewCanvas");
+const shapePreviewCanvas = document.getElementById("shapePreviewCanvas");
 
 /* ==========================================================================
    SETUP SCREEN HANDLERS
@@ -173,11 +179,13 @@ function initSetupScreen() {
     // Solo Level Selector Refresh
     levelValue.textContent = `Level ${gameState.currentLevel}`;
     levelHint.textContent = `Board Shape: ${getShapeName(gameState.currentLevel)}`;
+    drawMiniBoard("levelPreviewCanvas", gameState.currentLevel);
     
     // PVP Shape Selector Refresh
     const maxShapeUnlocked = Math.max(1, gameState.highestClearedLevel);
     shapeValue.textContent = getShapeName(gameState.selectedShapeLevel);
     shapeHint.textContent = `Cleared level shapes unlocked: 1 to ${maxShapeUnlocked}`;
+    drawMiniBoard("shapePreviewCanvas", gameState.selectedShapeLevel);
   }
 
   // Bind selector buttons click events
@@ -247,10 +255,12 @@ function initSetupScreen() {
     // Save configurations
     gameState.players[0].name = redNameInput.value.trim() || "RED PLAYER";
     gameState.players[0].emoji = AVATARS[selectedRedAvatarIdx].emoji;
+    gameState.players[0].html = AVATARS[selectedRedAvatarIdx].html;
     gameState.players[0].color = AVATARS[selectedRedAvatarIdx].color;
 
     gameState.players[1].name = blueNameInput.value.trim() || (gameState.mode === "ai" ? "AI COMP" : "BLUE PLAYER");
     gameState.players[1].emoji = AVATARS[selectedBlueAvatarIdx].emoji;
+    gameState.players[1].html = AVATARS[selectedBlueAvatarIdx].html;
     gameState.players[1].color = AVATARS[selectedBlueAvatarIdx].color;
 
     // Load sound system
@@ -258,6 +268,8 @@ function initSetupScreen() {
 
     // Toggle screens
     setupScreen.style.display = "none";
+    backBtn.style.display = "flex";
+    restartBtn.style.display = "flex";
     gameScreen.classList.remove("shake"); // Clean shake class
     
     // Animate transition into game screen
@@ -283,7 +295,7 @@ function renderAvatarGrid(container, playerKey, selectedIdx, onSelect) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = `avatar-option ${idx === selectedIdx ? "selected" : ""}`;
-    btn.textContent = av.emoji;
+    btn.innerHTML = av.html;
     btn.title = av.label;
     btn.addEventListener("click", () => onSelect(idx));
     container.appendChild(btn);
@@ -296,6 +308,80 @@ function updateAvatarSelection(playerKey, selectedIdx) {
   options.forEach((opt, idx) => {
     opt.classList.toggle("selected", idx === selectedIdx);
   });
+}
+
+function drawMiniBoard(canvasId, level) {
+  const c = document.getElementById(canvasId);
+  if (!c) return;
+  const ctxMini = c.getContext("2d");
+  
+  const w = c.width;
+  const h = c.height;
+  ctxMini.clearRect(0, 0, w, h);
+  
+  const cols = 5 + ((level - 1) % 4);
+  const rows = 7;
+  const left = 15;
+  const right = 15;
+  const top = 15;
+  const bottom = 15;
+  const algo = (level - 1) % 5;
+  
+  ctxMini.beginPath();
+  for (let i = 0; i <= FINISH; i++) {
+    let px, py;
+    if (algo === 0) {
+      const gapX = (w - left - right) / (cols - 1);
+      const gapY = (h - top - bottom) / (rows - 1);
+      const r = Math.floor(i / cols);
+      const idx = i % cols;
+      const col = r % 2 === 0 ? idx : cols - 1 - idx;
+      const row = rows - 1 - r;
+      px = left + col * gapX;
+      py = top + row * gapY;
+    } else if (algo === 1) {
+      const centerX = w / 2;
+      const centerY = h / 2;
+      const maxRadius = Math.min(w, h) / 2 - 12;
+      const angle = (i * 0.44) + 0.55;
+      const radius = maxRadius * (1 - (i / (FINISH + 8)));
+      px = centerX + Math.cos(angle) * radius;
+      py = centerY + Math.sin(angle) * radius;
+    } else if (algo === 2) {
+      const startY = h - bottom;
+      const endY = top;
+      const gapY = (startY - endY) / FINISH;
+      py = startY - i * gapY;
+      const waveAmp = 25 + (level % 3) * 5;
+      const waveFreq = 0.04 + ((level - 1) % 2) * 0.025;
+      px = w / 2 + waveAmp * Math.sin(waveFreq * (py - startY));
+    } else if (algo === 3) {
+      const centerX = w / 2;
+      const centerY = h / 2;
+      const scaleX = w / 2 - 15;
+      const scaleY = h / 2 - 18;
+      const t = (i / FINISH) * Math.PI * 2.1;
+      px = centerX + scaleX * Math.sin(t);
+      py = centerY + scaleY * Math.sin(2 * t);
+    } else {
+      const vCols = 6;
+      const gapX = (w - left - right) / (vCols - 1);
+      const gapY = (h - top - bottom) / (vCols - 1);
+      const colIdx = Math.floor(i / vCols);
+      const cellIdx = i % vCols;
+      const rowIdx = colIdx % 2 === 0 ? vCols - 1 - cellIdx : cellIdx;
+      px = left + colIdx * gapX;
+      py = top + rowIdx * gapY;
+    }
+    
+    if (i === 0) ctxMini.moveTo(px, py);
+    else ctxMini.lineTo(px, py);
+  }
+  ctxMini.lineWidth = 3;
+  ctxMini.lineCap = "round";
+  ctxMini.lineJoin = "round";
+  ctxMini.strokeStyle = "rgba(200,80,255,0.8)";
+  ctxMini.stroke();
 }
 
 /* ==========================================================================
@@ -328,6 +414,7 @@ function buildBoardForLevel(level) {
   const numBonuses = Math.max(1, 4 - Math.floor(level / 150));
   const numTraps = Math.min(6, 2 + Math.floor(level / 70));
   const numResets = 1;
+  const numFreezes = Math.min(3, 1 + Math.floor(level / 100)); // Freeze tiles
 
   const takenIndices = new Set([0, FINISH]); // Reserve start & finish
 
@@ -373,7 +460,7 @@ function buildBoardForLevel(level) {
     }
   }
 
-  // Generate reset
+  // Generate resets
   for (let r = 0; r < numResets; r++) {
     const idx = getUniqueIdx();
     if (idx !== -1) {
@@ -381,7 +468,20 @@ function buildBoardForLevel(level) {
         type: "reset",
         label: "💥 RESET",
         effect: -idx,
-        color: "#ff4760"
+        color: "#ff3a5c"
+      };
+    }
+  }
+
+  // Generate freezes
+  for (let f = 0; f < numFreezes; f++) {
+    const idx = getUniqueIdx();
+    if (idx !== -1) {
+      gameState.levelSpecials[idx] = {
+        type: "freeze",
+        label: "❄️ FREEZE",
+        effect: 0,
+        color: "#00b8ff"
       };
     }
   }
@@ -525,32 +625,54 @@ function triggerScreenShake(intensity = 12) {
 /* ==========================================================================
    RENDER SYSTEM (requestAnimationFrame loop)
    ========================================================================== */
+function updateCamera() {
+  // Find the active player's visual Y on the canvas
+  const active = gameState.players[gameState.currentPlayer];
+  if (!active || gameState.spaces.length === 0) return;
+
+  const H = canvas.height;
+  const VIEW_H = H; // full canvas height
+  const MARGIN = 120; // pixels of space above/below token
+
+  // We want the active player centered, but clamp so board never scrolls past edges
+  const totalBoardH = canvas.height; // board is drawn within canvas coords 0..H
+  const maxScroll = Math.max(0, totalBoardH - VIEW_H);
+
+  // Desired scroll: center token vertically in viewport
+  let desired = active.visualY - VIEW_H / 2;
+  desired = Math.max(0, Math.min(desired, maxScroll));
+
+  camera.targetY = desired;
+  // Smooth lerp
+  camera.y += (camera.targetY - camera.y) * 0.07;
+}
+
 function renderLoop() {
-  // Clear with background color matching visual container
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+  // Update camera first
+  updateCamera();
+
   ctx.save();
+
   // Apply Screen Shake
   if (gameState.screenShake > 0.1) {
     const dx = (Math.random() - 0.5) * gameState.screenShake;
     const dy = (Math.random() - 0.5) * gameState.screenShake;
     ctx.translate(dx, dy);
-    gameState.screenShake *= 0.88; // decay
+    gameState.screenShake *= 0.88;
   }
 
-  // Draw board background decor grid
-  drawBoardBackgroundDecor();
+  // Apply camera vertical pan
+  ctx.translate(0, -camera.y);
 
-  // Draw path trails
+  // Expand clipping region to draw a larger virtual canvas
+  const OVERFLOW = 200; // extra pixels drawn above/below for panning headroom
+  drawBoardBackgroundDecor(OVERFLOW);
+
   drawTrail();
-
-  // Draw board tile spaces
   drawSpaces();
-
-  // Update & Draw player visual tokens
   updateAndDrawTokens();
-
-  // Update & Draw particles
   updateParticles();
   drawParticles();
 
@@ -559,41 +681,42 @@ function renderLoop() {
   requestAnimationFrame(renderLoop);
 }
 
-function drawBoardBackgroundDecor() {
+function drawBoardBackgroundDecor(overflow = 0) {
   const W = canvas.width;
-  const H = canvas.height;
+  const H = canvas.height + overflow * 2;
+  const offY = -overflow;
 
-  // Deep background
+  // Deep background (covers panning area)
   ctx.save();
-  const bgGrad = ctx.createLinearGradient(0, 0, W, H);
+  const bgGrad = ctx.createLinearGradient(0, offY, W, H + offY);
   bgGrad.addColorStop(0, "#07080f");
   bgGrad.addColorStop(0.5, "#0a0c18");
   bgGrad.addColorStop(1, "#07080f");
   ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, W, H);
+  ctx.fillRect(0, offY, W, H);
 
   // Ambient purple radial glow top-right
   ctx.save();
-  const p1 = ctx.createRadialGradient(W * 0.8, H * 0.1, 0, W * 0.8, H * 0.1, W * 0.6);
+  const p1 = ctx.createRadialGradient(W * 0.8, H * 0.1 + offY, 0, W * 0.8, H * 0.1 + offY, W * 0.6);
   p1.addColorStop(0, "rgba(200,80,255,0.1)");
   p1.addColorStop(1, "transparent");
   ctx.fillStyle = p1;
-  ctx.fillRect(0, 0, W, H);
+  ctx.fillRect(0, offY, W, H);
   ctx.restore();
 
   // Ambient blue radial glow bottom-left
   ctx.save();
-  const p2 = ctx.createRadialGradient(W * 0.15, H * 0.85, 0, W * 0.15, H * 0.85, W * 0.5);
+  const p2 = ctx.createRadialGradient(W * 0.15, H * 0.85 + offY, 0, W * 0.15, H * 0.85 + offY, W * 0.5);
   p2.addColorStop(0, "rgba(0,184,255,0.08)");
   p2.addColorStop(1, "transparent");
   ctx.fillStyle = p2;
-  ctx.fillRect(0, 0, W, H);
+  ctx.fillRect(0, offY, W, H);
   ctx.restore();
 
   // Dot grid
   ctx.fillStyle = "rgba(255,255,255,0.025)";
   for (let x = 20; x < W; x += 36) {
-    for (let y = 20; y < H; y += 36) {
+    for (let y = offY + 20; y < H + offY; y += 36) {
       ctx.beginPath();
       ctx.arc(x, y, 0.8, 0, Math.PI * 2);
       ctx.fill();
@@ -673,6 +796,7 @@ function drawSpaces() {
     else if (space.type === "bonus")  fillColor = "#0dffb0";
     else if (space.type === "trap")   fillColor = "#ff6b00";
     else if (space.type === "reset")  fillColor = "#ff3a5c";
+    else if (space.type === "freeze") fillColor = "#00b8ff";
     else fillColor = null;
 
     if (fillColor) {
@@ -688,6 +812,17 @@ function drawSpaces() {
       ctx.lineWidth = 2;
       ctx.strokeStyle = "rgba(255,255,255,0.6)";
       ctx.stroke();
+      
+      // Draw freeze snowflake (if it's a freeze tile)
+      if (space.type === "freeze") {
+        ctx.save();
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = "bold 14px 'Font Awesome 6 Free'";
+        ctx.fillStyle = "#fff";
+        ctx.fillText("\uf2dc", space.x, space.y); // snowflake
+        ctx.restore();
+      }
     } else {
       // Normal tile
       ctx.beginPath();
@@ -728,7 +863,7 @@ function drawSpaces() {
       ctx.font = "bold 7px Nunito";
       ctx.fillStyle = "#fff";
       ctx.fillText("BACK", space.x, space.y);
-    } else {
+    } else if (space.type !== "freeze") {
       ctx.font = "600 10px Nunito";
       ctx.fillStyle = "rgba(255,255,255,0.18)";
       ctx.fillText(index.toString(), space.x, space.y);
@@ -833,11 +968,12 @@ function updateAndDrawTokens() {
 
     ctx.restore();
 
-    // Emoji
+    // FontAwesome Icon
     ctx.save();
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.font = "13px Arial";
+    ctx.font = '900 13px "Font Awesome 6 Free"';
+    ctx.fillStyle = "#ffffff";
     ctx.fillText(player.emoji, player.visualX, player.visualY + 1);
     ctx.restore();
 
@@ -904,13 +1040,13 @@ function updateHUD() {
   // Text values
   redNameCard.textContent = p1.name;
   blueNameCard.textContent = p2.name;
-  redAvatarBadge.textContent = p1.emoji;
-  blueAvatarBadge.textContent = p2.emoji;
+  redAvatarBadge.innerHTML = p1.html;
+  blueAvatarBadge.innerHTML = p2.html;
 
   // Turn status banner
   const activePlayer = gameState.players[gameState.currentPlayer];
   turnBullet.style.color = activePlayer.color;
-  turnName.textContent = `${activePlayer.emoji} ${activePlayer.name}'S TURN`;
+  turnName.innerHTML = `${activePlayer.html} ${activePlayer.name}'S TURN`;
 
   if (gameState.gameOver) {
     turnStatus.textContent = "GAME OVER";
@@ -929,14 +1065,7 @@ function updateHUD() {
 }
 
 function logAction(text, type = "normal") {
-  const el = document.createElement("div");
-  el.className = `log-entry ${type}`;
-  
-  const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  el.innerHTML = `<span style="color: var(--text-muted)">[${time}]</span> ${text}`;
-  
-  logContainer.appendChild(el);
-  logContainer.scrollTop = logContainer.scrollHeight;
+  // Logic replaced by visual popups and toast
 }
 
 function showToast(message) {
@@ -980,10 +1109,7 @@ function saveStats() {
 }
 
 function updateStatsDisplay() {
-  statGames.textContent = gameState.stats.games;
-  statWins.textContent = gameState.stats.wins;
-  statKos.textContent = gameState.stats.kos;
-  statTraps.textContent = gameState.stats.traps;
+  // Stat counters removed from UI
 }
 
 let baseRotationX = -20;
@@ -1114,10 +1240,8 @@ async function executeMovement(roll) {
 
 async function resolveKnockout(attacker, victim) {
   mainMessage.textContent = "KNOCKOUT! 💥";
-  hint.textContent = `${victim.name} is blasted back to START!`;
-  showToast(`💥 ${attacker.name} KO'd ${victim.name}!`);
-  logAction(`💥 <strong>${attacker.name}</strong> knocked out <strong>${victim.name}</strong>!`, "knockout");
-
+  hint.textContent = `Caught ${victim.name}!`;
+  
   // Cumulative statistics updates
   gameState.stats.kos++;
   saveStats();
@@ -1133,16 +1257,71 @@ async function resolveKnockout(attacker, victim) {
   // Custom Floating alert
   const middleX = window.innerWidth / 2;
   const middleY = window.innerHeight / 2;
-  floatingText("KNOCKOUT! 💥", "#ffc93c", middleX, middleY - 60);
+  floatingText("CAUGHT! ⚔️", "#ffc93c", middleX, middleY - 60);
 
   await wait(600);
 
-  // Send opponent sliding backwards all the way to START
-  while (victim.position > 0) {
-    victim.position--;
-    GameSFX.play("move");
-    updateHUD();
-    await wait(90);
+  // If Attacker is human, show modal. If AI, decide randomly.
+  const isHuman = (gameState.currentPlayer === 0) || (gameState.mode === "pvp");
+  
+  if (isHuman) {
+    // Show Punish Modal and wait for choice
+    const choice = await showPunishModal();
+    await applyPunishment(victim, choice);
+  } else {
+    // AI Choice
+    // AI leans heavily towards Knockout (60% KO, 30% Push, 10% Forgive)
+    const rand = Math.random();
+    let choice = "ko";
+    if (rand > 0.6 && rand <= 0.9) choice = "push";
+    else if (rand > 0.9) choice = "forgive";
+    
+    await applyPunishment(victim, choice);
+  }
+}
+
+function showPunishModal() {
+  return new Promise((resolve) => {
+    punishModal.classList.add("show");
+    
+    const onKo = () => { cleanup(); resolve("ko"); };
+    const onPush = () => { cleanup(); resolve("push"); };
+    const onForgive = () => { cleanup(); resolve("forgive"); };
+    
+    btnPunishKo.addEventListener("click", onKo);
+    btnPunishPush.addEventListener("click", onPush);
+    btnPunishForgive.addEventListener("click", onForgive);
+    
+    function cleanup() {
+      punishModal.classList.remove("show");
+      btnPunishKo.removeEventListener("click", onKo);
+      btnPunishPush.removeEventListener("click", onPush);
+      btnPunishForgive.removeEventListener("click", onForgive);
+    }
+  });
+}
+
+async function applyPunishment(victim, choice) {
+  if (choice === "ko") {
+    showToast(`💥 Sent back to START!`);
+    while (victim.position > 0) {
+      victim.position--;
+      GameSFX.play("move");
+      updateHUD();
+      await wait(90);
+    }
+  } else if (choice === "push") {
+    showToast(`👈 Pushed back 2 steps!`);
+    const dest = Math.max(0, victim.position - 2);
+    while (victim.position > dest) {
+      victim.position--;
+      GameSFX.play("move");
+      updateHUD();
+      await wait(90);
+    }
+  } else if (choice === "forgive") {
+    showToast(`😇 Forgiven! No punishment.`);
+    await wait(400);
   }
 }
 
@@ -1173,20 +1352,29 @@ async function resolveSpecialTile(player) {
       mainMessage.textContent = "POWER RESET! 🚨";
       hint.textContent = "Sliding back to START!";
       showToast("🚨 RESET TRIGGERED!");
-      logAction(`🚨 ${player.name} hit the RESET tile: sent back to START.`, "trap");
       
       triggerScreenShake(18);
       GameSFX.play("reset");
-      floatingText(`RESET! 😱`, "#ff4760", window.innerWidth / 2, window.innerHeight / 2);
+      floatingText(`RESET! 😱`, "#ff3a5c", window.innerWidth / 2, window.innerHeight / 2);
+    } else if (spec.type === "freeze") {
+      mainMessage.textContent = "FROZEN! ❄️";
+      hint.textContent = "Miss your next 2 turns!";
+      showToast("❄️ FROZEN! Miss 2 turns.");
+      
+      triggerScreenShake(6);
+      GameSFX.play("trap");
+      floatingText(`FREEZE! ❄️`, "#00b8ff", window.innerWidth / 2, window.innerHeight / 2);
+      
+      player.frozenTurns = 2; // Apply freeze
+      return; // Skip sliding logic for freeze
     } else {
       mainMessage.textContent = "ENERGY TRAP! 💀";
       hint.textContent = `Dragging back ${Math.abs(spec.effect)} spaces!`;
       showToast(`💀 TRAP! -${Math.abs(spec.effect)}`);
-      logAction(`💀 ${player.name} triggered a TRAP: fell back <strong>${Math.abs(spec.effect)}</strong> tiles.`, "trap");
 
       triggerScreenShake(10);
       GameSFX.play("trap");
-      floatingText(`-${Math.abs(spec.effect)} SPACES! 💀`, "#ff7e36", window.innerWidth / 2, window.innerHeight / 2);
+      floatingText(`-${Math.abs(spec.effect)} SPACES! 💀`, "#ff6b00", window.innerWidth / 2, window.innerHeight / 2);
     }
   }
 
@@ -1222,7 +1410,23 @@ async function resolveSpecialTile(player) {
    TURN ROTATION
    ========================================================================== */
 function switchTurn() {
+  // Move to next player
   gameState.currentPlayer = gameState.currentPlayer === 0 ? 1 : 0;
+  
+  // Check if they are frozen
+  const nextPlayer = gameState.players[gameState.currentPlayer];
+  if (nextPlayer.frozenTurns > 0) {
+    nextPlayer.frozenTurns--;
+    showToast(`❄️ ${nextPlayer.name} is frozen. Skipping turn.`);
+    floatingText(`FROZEN!`, "#00b8ff", window.innerWidth / 2, window.innerHeight / 2);
+    
+    // Immediately skip this turn and switch again
+    setTimeout(() => {
+      switchTurn();
+    }, 1000);
+    return;
+  }
+
   gameState.busy = false;
   
   diceFace.textContent = "?";
@@ -1311,12 +1515,40 @@ function triggerVictory(winner) {
       triggerScreenShake(2);
     }, i * 150);
   }
+
+  // Build context-sensitive modal buttons
+  const isHumanWinner = (gameState.currentPlayer === 0);
+  const isAiMode = (gameState.mode === "ai");
+  const isNewLevelClear = isHumanWinner && isAiMode && (gameState.currentLevel >= gameState.highestClearedLevel);
+
+  // Update win subtitle
+  const winSub = document.getElementById("winSub");
+  if (winSub) winSub.textContent = isHumanWinner ? "You won! What's next?" : `${winner.name} wins this round!`;
+
+  // Show / hide next level button
+  const nextLevelGameBtn = document.getElementById("nextLevelGameBtn");
+  if (nextLevelGameBtn) {
+    nextLevelGameBtn.style.display = (isNewLevelClear && gameState.currentLevel < 500) ? "flex" : "none";
+  }
+
+  // Update play again label based on context
+  const playAgainLabel = document.getElementById("playAgainLabel");
+  if (playAgainLabel) {
+    playAgainLabel.textContent = isHumanWinner ? "🔄 Try Same Level" : "🔄 Try Again";
+  }
 }
 
 /* ==========================================================================
    RESET & SYSTEM HELPERS
    ========================================================================== */
-function resetGame() {
+function resetGame(advanceLevel = false) {
+  if (advanceLevel && gameState.mode === "ai") {
+    gameState.currentLevel = Math.min(500, gameState.currentLevel + 1);
+  }
+
+  // Rebuild board for possibly new level
+  buildBoard();
+
   // Set players position
   gameState.players[0].position = 0;
   gameState.players[1].position = 0;
@@ -1329,6 +1561,10 @@ function resetGame() {
     p.targetX = startSpace.x;
     p.targetY = startSpace.y;
   });
+
+  // Reset camera to bottom of board
+  camera.y = canvas.height;
+  camera.targetY = canvas.height;
 
   gameState.currentPlayer = 0;
   gameState.busy = false;
@@ -1351,7 +1587,7 @@ function resetGame() {
 
   // Clean logs and post init log
   logContainer.innerHTML = "";
-  logAction(`🎮 New Game started in <strong>${gameState.mode === "ai" ? "VS AI" : "PVP"} Mode</strong>!`);
+  logAction(`🎮 New Game started in <strong>${gameState.mode === "ai" ? "VS AI" : "PVP"} Mode</strong>! Level: ${gameState.currentLevel}`);
   
   updateHUD();
 }
@@ -1379,8 +1615,16 @@ function initEvents() {
   });
 
   playAgainBtn.addEventListener("click", () => {
-    resetGame();
+    resetGame(false); // Same level
   });
+
+  // Next Level button (shown after winning in AI mode)
+  const nextLevelGameBtn = document.getElementById("nextLevelGameBtn");
+  if (nextLevelGameBtn) {
+    nextLevelGameBtn.addEventListener("click", () => {
+      resetGame(true); // Advance to next level
+    });
+  }
 
   // Mute audio Toggle
   muteBtn.addEventListener("click", () => {
@@ -1391,18 +1635,15 @@ function initEvents() {
 
   // Initialize Audio icon
   muteBtn.innerHTML = GameSFX.isMuted() ? "🔈" : "🔊";
-
-  // Sliding Drawer toggles
-  statsToggleBtn.addEventListener("click", () => {
-    statsDrawer.classList.add("open");
-  });
-
-  drawerCloseBtn.addEventListener("click", () => {
-    statsDrawer.classList.remove("open");
-  });
-
-  drawerOverlay.addEventListener("click", () => {
-    statsDrawer.classList.remove("open");
+  
+  // Back button functionality
+  backBtn.addEventListener("click", () => {
+    if (confirm("Return to setup? Current game progress will be lost.")) {
+      gameScreen.style.display = "none";
+      backBtn.style.display = "none";
+      setupScreen.style.display = "flex";
+      setupScreen.style.opacity = "1";
+    }
   });
 }
 
