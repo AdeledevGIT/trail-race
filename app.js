@@ -75,10 +75,14 @@ let gameState = {
   }
 };
 
-// Camera state for smooth panning
-const camera = {
-  y: 0,         // current rendered offset
-  targetY: 0    // destination we lerp toward
+// Global Camera state (X, Y, Zoom)
+let camera = {
+  x: 0,
+  y: 0,
+  zoom: 1,
+  targetX: 0,
+  targetY: 0,
+  targetZoom: 1
 };
 
 /* ==========================================================================
@@ -132,6 +136,10 @@ const modal = document.getElementById("modal");
 const winnerTitle = document.getElementById("winner");
 const playAgainBtn = document.getElementById("playAgain");
 
+// Zoom controls
+const btnZoomIn = document.getElementById("btnZoomIn");
+const btnZoomOut = document.getElementById("btnZoomOut");
+
 // Punish Modal
 const punishModal = document.getElementById("punishModal");
 const btnPunishKo = document.getElementById("btnPunishKo");
@@ -157,6 +165,14 @@ const shapePreviewCanvas = document.getElementById("shapePreviewCanvas");
    ========================================================================== */
 let selectedRedAvatarIdx = 0;
 let selectedBlueAvatarIdx = 1;
+
+// Zoom Listeners
+btnZoomIn.addEventListener("click", () => {
+  camera.targetZoom = Math.min(2.5, camera.targetZoom + 0.25);
+});
+btnZoomOut.addEventListener("click", () => {
+  camera.targetZoom = Math.max(0.5, camera.targetZoom - 0.25);
+});
 
 function getShapeName(level) {
   const algos = ["Serpentine Grid", "Helix Spiral", "Sine Wave", "Hourglass Loop", "Canyon Zigzag"];
@@ -319,60 +335,14 @@ function drawMiniBoard(canvasId, level) {
   const h = c.height;
   ctxMini.clearRect(0, 0, w, h);
   
-  const cols = 5 + ((level - 1) % 4);
-  const rows = Math.ceil((FINISH + 1) / cols);
-  const left = 15;
-  const right = 15;
-  const top = 15;
-  const bottom = 15;
-  const algo = (level - 1) % 5;
+  const pts = generateProceduralShape(level, FINISH);
+  const left = 20; const top = 20; const right = 20; const bottom = 20;
   
   ctxMini.beginPath();
   for (let i = 0; i <= FINISH; i++) {
-    let px, py;
-    if (algo === 0) {
-      const gapX = (w - left - right) / (cols - 1);
-      const gapY = (h - top - bottom) / (rows - 1);
-      const r = Math.floor(i / cols);
-      const idx = i % cols;
-      const col = r % 2 === 0 ? idx : cols - 1 - idx;
-      const row = rows - 1 - r;
-      px = left + col * gapX;
-      py = top + row * gapY;
-    } else if (algo === 1) {
-      const centerX = w / 2;
-      const centerY = h / 2;
-      const maxRadius = Math.min(w, h) / 2 - 12;
-      const angle = (i * 0.44) + 0.55;
-      const radius = maxRadius * (1 - (i / (FINISH + 8)));
-      px = centerX + Math.cos(angle) * radius;
-      py = centerY + Math.sin(angle) * radius;
-    } else if (algo === 2) {
-      const startY = h - bottom;
-      const endY = top;
-      const gapY = (startY - endY) / FINISH;
-      py = startY - i * gapY;
-      const waveAmp = 25 + (level % 3) * 5;
-      const waveFreq = 0.04 + ((level - 1) % 2) * 0.025;
-      px = w / 2 + waveAmp * Math.sin(waveFreq * (py - startY));
-    } else if (algo === 3) {
-      const centerX = w / 2;
-      const centerY = h / 2;
-      const scaleX = w / 2 - 15;
-      const scaleY = h / 2 - 18;
-      const t = (i / FINISH) * Math.PI * 2.1;
-      px = centerX + scaleX * Math.sin(t);
-      py = centerY + scaleY * Math.sin(2 * t);
-    } else {
-      const vCols = 6;
-      const gapX = (w - left - right) / (vCols - 1);
-      const gapY = (h - top - bottom) / (vCols - 1);
-      const colIdx = Math.floor(i / vCols);
-      const cellIdx = i % vCols;
-      const rowIdx = colIdx % 2 === 0 ? vCols - 1 - cellIdx : cellIdx;
-      px = left + colIdx * gapX;
-      py = top + rowIdx * gapY;
-    }
+    // Map normalized points [0..1] to mini canvas dimensions
+    const px = left + pts[i].x * (w - left - right);
+    const py = top + pts[i].y * (h - top - bottom);
     
     if (i === 0) ctxMini.moveTo(px, py);
     else ctxMini.lineTo(px, py);
@@ -392,44 +362,96 @@ function buildBoard() {
   buildBoardForLevel(lvl);
 }
 
+function generateProceduralShape(level, totalPoints) {
+  let pts = [];
+  // Seed based on level
+  let seed = level * 7891;
+  const rand = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+  
+  const family = Math.floor(rand() * 5); // 0: Grid/Serpentine, 1: Lissajous, 2: Spiral, 3: Sine, 4: Rose
+  
+  for (let i = 0; i <= totalPoints; i++) {
+    const t = i / totalPoints; // 0.0 to 1.0
+    let px = 0, py = 0;
+    
+    if (family === 0) {
+      // Serpentine (varied grid)
+      const cols = 5 + Math.floor(rand() * 4);
+      const r = Math.floor(i / cols);
+      const col = r % 2 === 0 ? (i % cols) : cols - 1 - (i % cols);
+      px = col / Math.max(1, cols - 1);
+      py = 1.0 - (r / Math.max(1, Math.ceil(totalPoints / cols) - 1));
+    } else if (family === 1) {
+      // Lissajous Knot
+      const a = 1 + Math.floor(rand() * 5);
+      const b = 1 + Math.floor(rand() * 5);
+      const phase = rand() * Math.PI;
+      px = 0.5 + 0.45 * Math.sin(a * t * Math.PI * 2 + phase);
+      py = 0.5 + 0.45 * Math.sin(b * t * Math.PI * 2);
+    } else if (family === 2) {
+      // Spiral
+      const loops = 1.5 + rand() * 3;
+      const angle = t * Math.PI * 2 * loops;
+      const radius = 0.45 * (1 - t);
+      px = 0.5 + Math.cos(angle) * radius;
+      py = 0.5 + Math.sin(angle) * radius;
+    } else if (family === 3) {
+      // Winding Sine wave
+      const waves = 2 + Math.floor(rand() * 4);
+      const amp = 0.2 + rand() * 0.25;
+      px = 0.5 + amp * Math.sin(t * Math.PI * 2 * waves);
+      py = 1.0 - t;
+    } else {
+      // Rose Curve
+      const k = 2 + Math.floor(rand() * 6);
+      const angle = t * Math.PI * 2 * (k % 2 === 0 ? 2 : 1);
+      const radius = 0.45 * Math.cos(k * angle);
+      px = 0.5 + Math.cos(angle) * radius;
+      py = 0.5 + Math.sin(angle) * radius;
+    }
+    pts.push({ x: px, y: py });
+  }
+  
+  // Normalize bounds to exactly 0..1 bounding box
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  pts.forEach(p => {
+    if (p.x < minX) minX = p.x;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.y > maxY) maxY = p.y;
+  });
+  
+  const width = Math.max(0.0001, maxX - minX);
+  const height = Math.max(0.0001, maxY - minY);
+  
+  return pts.map(p => ({
+    x: (p.x - minX) / width,
+    y: (p.y - minY) / height
+  }));
+}
+
 function buildBoardForLevel(level) {
   gameState.spaces = [];
-  const cols = 5 + ((level - 1) % 4); // 5, 6, 7, or 8 columns
-  const rows = Math.ceil((FINISH + 1) / cols); // Dynamically calculate required rows
-  const left = 35;
-  const right = 35;
-  const top = 35;
-  const bottom = 35;
   const width = canvas.width;
   
-  // Dynamic Virtual Height for scrolling boards
-  const algo = (level - 1) % 5;
-  let virtualHeight = canvas.height;
-  if (algo === 0 || algo === 2 || algo === 4) {
-    virtualHeight = Math.max(900, rows * 110); // Give plenty of vertical space
-  } else if (algo === 1 || algo === 3) {
-    virtualHeight = Math.max(550, width + 50); // Squarish for spirals/hourglass
-  }
-  gameState.virtualHeight = virtualHeight;
-
-  // 1. Generate Specials deterministically based on Level seed
+  // Generate [0..1] normalized path
+  const normalizedPts = generateProceduralShape(level, FINISH);
+  
+  // 1. Generate Specials deterministically
   gameState.levelSpecials = {};
   let seed = level * 17;
-  function nextRand() {
-    const x = Math.sin(seed++) * 10000;
-    return x - Math.floor(x);
-  }
+  const nextRand = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
 
   const numBonuses = Math.max(1, 4 - Math.floor(level / 150));
   const numTraps = Math.min(6, 2 + Math.floor(level / 70));
   const numResets = 1;
-  const numFreezes = Math.min(3, 1 + Math.floor(level / 100)); // Freeze tiles
+  const numFreezes = Math.min(3, 1 + Math.floor(level / 100));
 
-  const takenIndices = new Set([0, FINISH]); // Reserve start & finish
+  const takenIndices = new Set([0, FINISH]);
 
   function getUniqueIdx() {
     for (let attempt = 0; attempt < 100; attempt++) {
-      const idx = 3 + Math.floor(nextRand() * (FINISH - 5)); // 3 to 38
+      const idx = 3 + Math.floor(nextRand() * (FINISH - 5));
       if (!takenIndices.has(idx)) {
         takenIndices.add(idx);
         return idx;
@@ -438,135 +460,52 @@ function buildBoardForLevel(level) {
     return -1;
   }
 
-  // Generate bonuses
-  for (let b = 0; b < numBonuses; b++) {
-    const idx = getUniqueIdx();
-    if (idx !== -1) {
-      const val = nextRand() < 0.5 ? 5 : 10;
-      gameState.levelSpecials[idx] = {
-        type: "bonus",
-        label: `⚡ +${val}`,
-        effect: val,
-        color: "#10e394"
-      };
-    }
-  }
+  // Generate bonuses, traps, resets, freezes
+  for (let b = 0; b < numBonuses; b++) { const idx = getUniqueIdx(); if (idx !== -1) gameState.levelSpecials[idx] = { type: "bonus", label: `⚡ +${nextRand() < 0.5 ? 5 : 10}`, effect: nextRand() < 0.5 ? 5 : 10, color: "#10e394" }; }
+  for (let t = 0; t < numTraps; t++) { const idx = getUniqueIdx(); if (idx !== -1) { const vals = [-2, -3, -5, -8, -10]; const val = vals[Math.floor(nextRand() * Math.min(5, 1+Math.floor(level/100)))]; gameState.levelSpecials[idx] = { type: "trap", label: `💀 ${val}`, effect: val, color: "#ff7e36" }; } }
+  for (let r = 0; r < numResets; r++) { const idx = getUniqueIdx(); if (idx !== -1) gameState.levelSpecials[idx] = { type: "reset", label: "💥 RESET", effect: -idx, color: "#ff3a5c" }; }
+  for (let f = 0; f < numFreezes; f++) { const idx = getUniqueIdx(); if (idx !== -1) gameState.levelSpecials[idx] = { type: "freeze", label: "❄️ FREEZE", effect: 0, color: "#00b8ff" }; }
 
-  // Generate traps
-  for (let t = 0; t < numTraps; t++) {
-    const idx = getUniqueIdx();
-    if (idx !== -1) {
-      const possibleEffects = [-2, -3, -5, -8, -10];
-      const trapStrength = Math.min(4, Math.floor(level / 100)); // index 0 to 4
-      const effIdx = Math.floor(nextRand() * (trapStrength + 1));
-      const val = possibleEffects[effIdx];
-      gameState.levelSpecials[idx] = {
-        type: "trap",
-        label: `💀 ${val}`,
-        effect: val,
-        color: "#ff7e36"
-      };
-    }
+  // Auto-Scale to prevent cramping
+  const tileSpacing = 110; // Guarantees 110px of virtual distance roughly per step
+  let totalDist = 0;
+  for (let i = 1; i <= FINISH; i++) {
+    const dx = normalizedPts[i].x - normalizedPts[i-1].x;
+    const dy = normalizedPts[i].y - normalizedPts[i-1].y;
+    totalDist += Math.sqrt(dx*dx + dy*dy);
   }
-
-  // Generate resets
-  for (let r = 0; r < numResets; r++) {
-    const idx = getUniqueIdx();
-    if (idx !== -1) {
-      gameState.levelSpecials[idx] = {
-        type: "reset",
-        label: "💥 RESET",
-        effect: -idx,
-        color: "#ff3a5c"
-      };
-    }
-  }
-
-  // Generate freezes
-  for (let f = 0; f < numFreezes; f++) {
-    const idx = getUniqueIdx();
-    if (idx !== -1) {
-      gameState.levelSpecials[idx] = {
-        type: "freeze",
-        label: "❄️ FREEZE",
-        effect: 0,
-        color: "#00b8ff"
-      };
-    }
-  }
-
-  // 2. Map coordinates based on dynamic Level Algorithms
+  
+  // Calculate raw scalar needed to hit our target total length
+  const targetLength = FINISH * tileSpacing;
+  const scalar = targetLength / Math.max(totalDist, 0.001);
+  
+  // Apply scalar and padding
+  const padding = 100;
+  let boundingWidth = scalar;
+  let boundingHeight = scalar;
+  
+  // Optional: keep aspect ratio by using scalar for both, so shapes don't distort
+  gameState.virtualWidth = boundingWidth + padding * 2;
+  gameState.virtualHeight = boundingHeight + padding * 2;
+  
   for (let i = 0; i <= FINISH; i++) {
-    let px, py;
-    if (algo === 0) {
-      // Algorithm 0: Bottom-up Grid serpentine
-      const gapX = (width - left - right) / (cols - 1);
-      const gapY = (virtualHeight - top - bottom) / (rows - 1);
-      const r = Math.floor(i / cols);
-      const idx = i % cols;
-      const col = r % 2 === 0 ? idx : cols - 1 - idx;
-      const row = rows - 1 - r;
-      px = left + col * gapX;
-      py = top + row * gapY;
-
-    } else if (algo === 1) {
-      // Algorithm 1: Helix Spiral (inward spiral)
-      const centerX = width / 2;
-      const centerY = virtualHeight / 2;
-      const maxRadius = Math.min(width, virtualHeight) / 2 - 28;
-      const angle = (i * 0.44) + 0.55;
-      const radius = maxRadius * (1 - (i / (FINISH + 8)));
-      px = centerX + Math.cos(angle) * radius;
-      py = centerY + Math.sin(angle) * radius;
-
-    } else if (algo === 2) {
-      // Algorithm 2: Sine Wave winding upwards
-      const startY = virtualHeight - bottom;
-      const endY = top;
-      const gapY = (startY - endY) / FINISH;
-      py = startY - i * gapY;
-      const waveAmp = 65 + (level % 3) * 15;
-      const waveFreq = 0.04 + ((level - 1) % 2) * 0.025;
-      px = width / 2 + waveAmp * Math.sin(waveFreq * (py - startY));
-
-    } else if (algo === 3) {
-      // Algorithm 3: Hourglass figure-8 Loop
-      const centerX = width / 2;
-      const centerY = virtualHeight / 2;
-      const scaleX = width / 2 - 32;
-      const scaleY = virtualHeight / 2 - 40;
-      const t = (i / FINISH) * Math.PI * 2.1;
-      px = centerX + scaleX * Math.sin(t);
-      py = centerY + scaleY * Math.sin(2 * t);
-
-    } else {
-      // Algorithm 4: Vertical serpentine cols
-      const vCols = 6;
-      const gapX = (width - left - right) / (vCols - 1);
-      const gapY = (virtualHeight - top - bottom) / (vCols - 1);
-      const colIdx = Math.floor(i / vCols);
-      const cellIdx = i % vCols;
-      const rowIdx = colIdx % 2 === 0 ? vCols - 1 - cellIdx : cellIdx;
-      px = left + colIdx * gapX;
-      py = top + rowIdx * gapY;
-    }
-
+    const px = padding + normalizedPts[i].x * boundingWidth;
+    const py = padding + normalizedPts[i].y * boundingHeight;
+    
     let type = "normal";
     let label = "";
     let color = "#1e293b";
 
-    if (i === 0) {
-      type = "start";
-      label = "START";
-      color = "#10e394";
-    } else if (i === FINISH) {
-      type = "finish";
-      label = "🏆 FINISH";
-      color = "#ffc93c";
-    } else if (gameState.levelSpecials[i]) {
+    if (gameState.levelSpecials[i]) {
       type = gameState.levelSpecials[i].type;
       label = gameState.levelSpecials[i].label;
       color = gameState.levelSpecials[i].color;
+    } else if (i === 0) {
+      type = "start";
+      label = "START";
+      color = "#00b8ff";
+    } else if (i === FINISH) {
+      type = "finish";
     }
 
     gameState.spaces.push({
@@ -633,30 +572,38 @@ function triggerScreenShake(intensity = 12) {
    RENDER SYSTEM (requestAnimationFrame loop)
    ========================================================================== */
 function updateCamera() {
-  // Find the active player's visual Y on the canvas
   const active = gameState.players[gameState.currentPlayer];
   if (!active || gameState.spaces.length === 0) return;
 
+  const W = canvas.width;
   const H = canvas.height;
-  const VIEW_H = H; // full canvas height
-  const MARGIN = 120; // pixels of space above/below token
-
-  // We want the active player centered, but clamp so board never scrolls past edges
-  const totalBoardH = gameState.virtualHeight || canvas.height;
-  const maxScroll = Math.max(0, totalBoardH - VIEW_H);
-
-  // Desired scroll: center token vertically in viewport
-  let desired = active.visualY - VIEW_H / 2;
   
-  // Add a slight offset to look ahead (so we see more of where we are going)
-  // For standard maps, player goes UP, so look higher (lower Y coords)
-  desired -= 50;
+  // Calculate scaled viewport size based on target zoom
+  const viewW = W / camera.targetZoom;
+  const viewH = H / camera.targetZoom;
+  
+  // We want to center the player
+  let desiredX = active.visualX - viewW / 2;
+  let desiredY = active.visualY - viewH / 2;
+  
+  // For better pacing, look slightly ahead horizontally or vertically based on current segment
+  // (We'll just look a bit up as a safe default for now, or skip look-ahead so zoom feels natural)
+  desiredY -= 20;
 
-  desired = Math.max(0, Math.min(desired, maxScroll));
+  // Clamp camera so we don't expose too much black void around the massive boards
+  const maxScrollX = Math.max(0, (gameState.virtualWidth || W) - viewW);
+  const maxScrollY = Math.max(0, (gameState.virtualHeight || H) - viewH);
+  
+  desiredX = Math.max(0, Math.min(desiredX, maxScrollX));
+  desiredY = Math.max(0, Math.min(desiredY, maxScrollY));
 
-  camera.targetY = desired;
-  // Smooth lerp
-  camera.y += (camera.targetY - camera.y) * 0.07;
+  camera.targetX = desiredX;
+  camera.targetY = desiredY;
+
+  // Smooth lerp camera pan & zoom
+  camera.x += (camera.targetX - camera.x) * 0.08;
+  camera.y += (camera.targetY - camera.y) * 0.08;
+  camera.zoom += (camera.targetZoom - camera.zoom) * 0.08;
 }
 
 function renderLoop() {
@@ -675,8 +622,14 @@ function renderLoop() {
     gameState.screenShake *= 0.88;
   }
 
-  // Apply camera vertical pan
-  ctx.translate(0, -camera.y);
+  // Apply Camera Zoom & Panning
+  // We zoom from the center of the viewport
+  ctx.translate(canvas.width / 2, canvas.height / 2);
+  ctx.scale(camera.zoom, camera.zoom);
+  ctx.translate(-canvas.width / 2, -canvas.height / 2);
+  
+  // Pan to camera position
+  ctx.translate(-camera.x, -camera.y);
 
   // Expand clipping region to draw a larger virtual canvas
   const OVERFLOW = 200; // extra pixels drawn above/below for panning headroom
@@ -1657,6 +1610,16 @@ function initEvents() {
       setupScreen.style.opacity = "1";
     }
   });
+
+  // Zoom controls
+  if (btnZoomIn && btnZoomOut) {
+    btnZoomIn.addEventListener("click", () => {
+      camera.targetZoom = Math.min(2.5, camera.targetZoom + 0.25);
+    });
+    btnZoomOut.addEventListener("click", () => {
+      camera.targetZoom = Math.max(0.4, camera.targetZoom - 0.25);
+    });
+  }
 }
 
 /* ==========================================================================
