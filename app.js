@@ -450,8 +450,10 @@ function buildBoardForLevel(level) {
 
   const numBonuses = Math.max(1, 4 - Math.floor(level / 150));
   const numTraps = Math.min(6, 2 + Math.floor(level / 70));
-  const numResets = 1;
+  const numResets = 1 + Math.floor(level / 20); // Scale resets
   const numFreezes = Math.min(3, 1 + Math.floor(level / 100));
+  const numShields = level >= 3 ? Math.min(3, 1 + Math.floor(level / 50)) : 0;
+  const numWormholes = level >= 10 ? Math.min(2, 1 + Math.floor(level / 150)) : 0;
 
   const takenIndices = new Set([0, FINISH]);
 
@@ -466,11 +468,13 @@ function buildBoardForLevel(level) {
     return -1;
   }
 
-  // Generate bonuses, traps, resets, freezes
+  // Generate bonuses, traps, resets, freezes, shields, wormholes
   for (let b = 0; b < numBonuses; b++) { const idx = getUniqueIdx(); if (idx !== -1) gameState.levelSpecials[idx] = { type: "bonus", label: `⚡ +${nextRand() < 0.5 ? 5 : 10}`, effect: nextRand() < 0.5 ? 5 : 10, color: "#10e394" }; }
   for (let t = 0; t < numTraps; t++) { const idx = getUniqueIdx(); if (idx !== -1) { const vals = [-2, -3, -5, -8, -10]; const val = vals[Math.floor(nextRand() * Math.min(5, 1+Math.floor(level/100)))]; gameState.levelSpecials[idx] = { type: "trap", label: `💀 ${val}`, effect: val, color: "#ff7e36" }; } }
   for (let r = 0; r < numResets; r++) { const idx = getUniqueIdx(); if (idx !== -1) gameState.levelSpecials[idx] = { type: "reset", label: "💥 RESET", effect: -idx, color: "#ff3a5c" }; }
   for (let f = 0; f < numFreezes; f++) { const idx = getUniqueIdx(); if (idx !== -1) gameState.levelSpecials[idx] = { type: "freeze", label: "❄️ FREEZE", effect: 0, color: "#00b8ff" }; }
+  for (let s = 0; s < numShields; s++) { const idx = getUniqueIdx(); if (idx !== -1) gameState.levelSpecials[idx] = { type: "shield", label: "🛡️ SHIELD", effect: 0, color: "#00e1ff" }; }
+  for (let w = 0; w < numWormholes; w++) { const idx = getUniqueIdx(); if (idx !== -1) gameState.levelSpecials[idx] = { type: "wormhole", label: "🌌 WORMHOLE", effect: 0, color: "#9d00ff" }; }
 
   // Auto-Scale to prevent cramping using perfect grid distances
   const TILE_SPACING = 85;
@@ -812,6 +816,14 @@ function drawSpaces() {
       ctx.font = "bold 7px Nunito";
       ctx.fillStyle = "#fff";
       ctx.fillText("BACK", space.x, space.y);
+    } else if (space.type === "shield") {
+      ctx.font = "12px FontAwesome";
+      ctx.fillStyle = "#07080f";
+      ctx.fillText("🛡️", space.x, space.y + 1); // Slight offset for emoji
+    } else if (space.type === "wormhole") {
+      ctx.font = "12px FontAwesome";
+      ctx.fillStyle = "#fff";
+      ctx.fillText("🌌", space.x, space.y + 1);
     } else if (space.type !== "freeze") {
       ctx.font = "600 10px Nunito";
       ctx.fillStyle = "rgba(255,255,255,0.18)";
@@ -881,6 +893,19 @@ function updateAndDrawTokens() {
       ctx.shadowBlur = 20;
       ctx.shadowColor = player.color;
       ctx.stroke();
+    }
+    
+    // Shield Aura
+    if (player.hasShield) {
+      ctx.beginPath();
+      ctx.arc(player.visualX, player.visualY, TOKEN_R + 10, 0, Math.PI * 2);
+      ctx.strokeStyle = "#00e1ff";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 4]);
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = "#00e1ff";
+      ctx.stroke();
+      ctx.setLineDash([]);
     }
 
     // Drop shadow
@@ -991,6 +1016,10 @@ function updateHUD() {
   blueNameCard.textContent = p2.name;
   redAvatarBadge.innerHTML = p1.html;
   blueAvatarBadge.innerHTML = p2.html;
+  
+  // Shield badges
+  document.getElementById("redShieldBadge").style.display = p1.hasShield ? "inline-block" : "none";
+  document.getElementById("blueShieldBadge").style.display = p2.hasShield ? "inline-block" : "none";
 
   // Turn status banner
   const activePlayer = gameState.players[gameState.currentPlayer];
@@ -1158,23 +1187,35 @@ async function executeMovement(roll) {
     await wait(220);
   }
 
-  // Resolve collision attacks
-  const opponentIdx = gameState.currentPlayer === 0 ? 1 : 0;
-  const opponent = gameState.players[opponentIdx];
+  // Chained resolution loop
+  let chains = 0;
+  let keepResolving = true;
+  
+  while (keepResolving && chains < 3) {
+    keepResolving = false;
 
-  if (player.position === opponent.position && player.position !== 0) {
-    await resolveKnockout(player, opponent);
-  }
+    // Resolve collision attacks
+    const opponentIdx = gameState.currentPlayer === 0 ? 1 : 0;
+    const opponent = gameState.players[opponentIdx];
 
-  // Resolve Goal Win
-  if (player.position === FINISH) {
-    triggerVictory(player);
-    return;
-  }
+    if (player.position === opponent.position && player.position !== 0) {
+      await resolveKnockout(player, opponent);
+    }
 
-  // Resolve landing on Special spaces
-  if (gameState.levelSpecials[player.position]) {
-    await resolveSpecialTile(player);
+    // Resolve Goal Win
+    if (player.position === FINISH) {
+      triggerVictory(player);
+      return;
+    }
+
+    // Resolve landing on Special spaces
+    if (gameState.levelSpecials[player.position]) {
+      const moved = await resolveSpecialTile(player);
+      if (moved) {
+        keepResolving = true;
+        chains++;
+      }
+    }
   }
 
   // Check goal win post-special tile slide
@@ -1188,6 +1229,19 @@ async function executeMovement(roll) {
 }
 
 async function resolveKnockout(attacker, victim) {
+  if (victim.hasShield) {
+    victim.hasShield = false;
+    updateHUD();
+    mainMessage.textContent = "SHIELD BROKEN! 🛡️";
+    hint.textContent = `${victim.name}'s shield blocked the attack!`;
+    showToast(`🛡️ ${victim.name} blocked the knockout!`);
+    triggerScreenShake(10);
+    GameSFX.play("trap"); // Re-use trap sound for shield break
+    floatingText("BLOCKED! 🛡️", "#00e1ff", window.innerWidth / 2, window.innerHeight / 2);
+    await wait(1000);
+    return;
+  }
+
   mainMessage.textContent = "KNOCKOUT! 💥";
   hint.textContent = `Caught ${victim.name}!`;
   
@@ -1278,6 +1332,34 @@ async function resolveSpecialTile(player) {
   const spec = gameState.levelSpecials[player.position];
   await wait(350);
 
+  if (spec.type === "shield") {
+    player.hasShield = true;
+    updateHUD();
+    mainMessage.textContent = "SHIELD EQUIPPED! 🛡️";
+    hint.textContent = "You are protected from the next trap or knockout.";
+    showToast("🛡️ Shield Equipped!");
+    GameSFX.play("bonus");
+    floatingText("SHIELD UP! 🛡️", "#00e1ff", window.innerWidth / 2, window.innerHeight / 2);
+    await wait(800);
+    return false; // Did not move
+  }
+
+  if (spec.type === "wormhole") {
+    mainMessage.textContent = "WORMHOLE! 🌌";
+    hint.textContent = "Teleporting through space-time!";
+    showToast("🌌 Teleporting...");
+    triggerScreenShake(8);
+    GameSFX.play("reset");
+    
+    // Pick random valid space (not start or finish)
+    let dest = 1 + Math.floor(Math.random() * (FINISH - 1));
+    player.position = dest;
+    updateHUD();
+    floatingText("TELEPORTED! 🌌", "#9d00ff", window.innerWidth / 2, window.innerHeight / 2);
+    await wait(800);
+    return true; // Moved
+  }
+
   if (spec.effect > 0) {
     // BONUS TILE
     mainMessage.textContent = "BONUS! ⚡";
@@ -1293,7 +1375,21 @@ async function resolveSpecialTile(player) {
     floatingText(`+${spec.effect} SPACES! 🚀`, "#10e394", window.innerWidth / 2, window.innerHeight / 2);
 
   } else {
-    // TRAP / RESET
+    // TRAP / RESET / FREEZE
+    
+    // Check Shield block first
+    if (player.hasShield) {
+      player.hasShield = false;
+      updateHUD();
+      mainMessage.textContent = "SHIELD CONSUMED! 🛡️";
+      hint.textContent = "Your shield absorbed the hazard!";
+      showToast("🛡️ Shield blocked the trap!");
+      GameSFX.play("trap");
+      floatingText("ABSORBED! 🛡️", "#00e1ff", window.innerWidth / 2, window.innerHeight / 2);
+      await wait(800);
+      return false; // Did not move, hazard cancelled
+    }
+
     gameState.stats.traps++;
     saveStats();
 
@@ -1315,7 +1411,7 @@ async function resolveSpecialTile(player) {
       floatingText(`FREEZE! ❄️`, "#00b8ff", window.innerWidth / 2, window.innerHeight / 2);
       
       player.frozenTurns = 2; // Apply freeze
-      return; // Skip sliding logic for freeze
+      return false; // Skip sliding logic for freeze
     } else {
       mainMessage.textContent = "ENERGY TRAP! 💀";
       hint.textContent = `Dragging back ${Math.abs(spec.effect)} spaces!`;
@@ -1333,6 +1429,8 @@ async function resolveSpecialTile(player) {
   let destination = player.position + spec.effect;
   if (destination < 0) destination = 0;
   if (destination > FINISH) destination = FINISH;
+  
+  if (destination === player.position) return false;
 
   // Visual slide loops
   while (player.position !== destination) {
@@ -1346,13 +1444,7 @@ async function resolveSpecialTile(player) {
     await wait(180);
   }
 
-  // Evaluate collisions post-special slide
-  const opponentIdx = gameState.currentPlayer === 0 ? 1 : 0;
-  const opponent = gameState.players[opponentIdx];
-
-  if (player.position === opponent.position && player.position !== 0) {
-    await resolveKnockout(player, opponent);
-  }
+  return true; // Moved, allowing chain to continue
 }
 
 /* ==========================================================================
@@ -1509,6 +1601,7 @@ function resetGame(advanceLevel = false) {
     p.visualY = startSpace.y;
     p.targetX = startSpace.x;
     p.targetY = startSpace.y;
+    p.hasShield = false;
   });
 
   // Reset camera to bottom of board
