@@ -136,10 +136,6 @@ const modal = document.getElementById("modal");
 const winnerTitle = document.getElementById("winner");
 const playAgainBtn = document.getElementById("playAgain");
 
-// Zoom controls
-const btnZoomIn = document.getElementById("btnZoomIn");
-const btnZoomOut = document.getElementById("btnZoomOut");
-
 // Punish Modal
 const punishModal = document.getElementById("punishModal");
 const btnPunishKo = document.getElementById("btnPunishKo");
@@ -153,6 +149,7 @@ const prevLevelBtn = document.getElementById("prevLevelBtn");
 const nextLevelBtn = document.getElementById("nextLevelBtn");
 const levelValue = document.getElementById("levelValue");
 const levelHint = document.getElementById("levelHint");
+
 const prevShapeBtn = document.getElementById("prevShapeBtn");
 const nextShapeBtn = document.getElementById("nextShapeBtn");
 const shapeValue = document.getElementById("shapeValue");
@@ -165,14 +162,6 @@ const shapePreviewCanvas = document.getElementById("shapePreviewCanvas");
    ========================================================================== */
 let selectedRedAvatarIdx = 0;
 let selectedBlueAvatarIdx = 1;
-
-// Zoom Listeners
-btnZoomIn.addEventListener("click", () => {
-  camera.targetZoom = Math.min(2.5, camera.targetZoom + 0.25);
-});
-btnZoomOut.addEventListener("click", () => {
-  camera.targetZoom = Math.max(0.5, camera.targetZoom - 0.25);
-});
 
 function getShapeName(level) {
   const algos = ["Serpentine Grid", "Helix Spiral", "Sine Wave", "Hourglass Loop", "Canyon Zigzag"];
@@ -335,14 +324,19 @@ function drawMiniBoard(canvasId, level) {
   const h = c.height;
   ctxMini.clearRect(0, 0, w, h);
   
-  const pts = generateProceduralShape(level, FINISH);
+  const gridData = generateGridShape(level, FINISH);
   const left = 20; const top = 20; const right = 20; const bottom = 20;
+  
+  const gridW = Math.max(1, gridData.maxX - gridData.minX);
+  const gridH = Math.max(1, gridData.maxY - gridData.minY);
   
   ctxMini.beginPath();
   for (let i = 0; i <= FINISH; i++) {
-    // Map normalized points [0..1] to mini canvas dimensions
-    const px = left + pts[i].x * (w - left - right);
-    const py = top + pts[i].y * (h - top - bottom);
+    // Map grid points to mini canvas dimensions
+    const normX = (gridData.pts[i].x - gridData.minX) / gridW;
+    const normY = (gridData.pts[i].y - gridData.minY) / gridH;
+    const px = left + normX * (w - left - right);
+    const py = top + normY * (h - top - bottom);
     
     if (i === 0) ctxMini.moveTo(px, py);
     else ctxMini.lineTo(px, py);
@@ -362,57 +356,74 @@ function buildBoard() {
   buildBoardForLevel(lvl);
 }
 
-function generateProceduralShape(level, totalPoints) {
+function generateGridShape(level, totalPoints) {
   let pts = [];
-  // Seed based on level
-  let seed = level * 7891;
-  const rand = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+  // Use algo logic to get 50+ shapes using grids
+  const algo = (level - 1) % 5;
+  const variation = Math.floor((level - 1) / 5) % 10; 
   
-  const family = Math.floor(rand() * 5); // 0: Grid/Serpentine, 1: Lissajous, 2: Spiral, 3: Sine, 4: Rose
-  
-  for (let i = 0; i <= totalPoints; i++) {
-    const t = i / totalPoints; // 0.0 to 1.0
-    let px = 0, py = 0;
-    
-    if (family === 0) {
-      // Serpentine (varied grid)
-      const cols = 5 + Math.floor(rand() * 4);
+  if (algo === 0) {
+    // Horizontal Serpentine
+    const cols = 4 + (variation % 5); // 4 to 8 cols
+    for (let i = 0; i <= totalPoints; i++) {
       const r = Math.floor(i / cols);
-      const col = r % 2 === 0 ? (i % cols) : cols - 1 - (i % cols);
-      px = col / Math.max(1, cols - 1);
-      py = 1.0 - (r / Math.max(1, Math.ceil(totalPoints / cols) - 1));
-    } else if (family === 1) {
-      // Lissajous Knot
-      const a = 1 + Math.floor(rand() * 5);
-      const b = 1 + Math.floor(rand() * 5);
-      const phase = rand() * Math.PI;
-      px = 0.5 + 0.45 * Math.sin(a * t * Math.PI * 2 + phase);
-      py = 0.5 + 0.45 * Math.sin(b * t * Math.PI * 2);
-    } else if (family === 2) {
-      // Spiral
-      const loops = 1.5 + rand() * 3;
-      const angle = t * Math.PI * 2 * loops;
-      const radius = 0.45 * (1 - t);
-      px = 0.5 + Math.cos(angle) * radius;
-      py = 0.5 + Math.sin(angle) * radius;
-    } else if (family === 3) {
-      // Winding Sine wave
-      const waves = 2 + Math.floor(rand() * 4);
-      const amp = 0.2 + rand() * 0.25;
-      px = 0.5 + amp * Math.sin(t * Math.PI * 2 * waves);
-      py = 1.0 - t;
-    } else {
-      // Rose Curve
-      const k = 2 + Math.floor(rand() * 6);
-      const angle = t * Math.PI * 2 * (k % 2 === 0 ? 2 : 1);
-      const radius = 0.45 * Math.cos(k * angle);
-      px = 0.5 + Math.cos(angle) * radius;
-      py = 0.5 + Math.sin(angle) * radius;
+      const c = r % 2 === 0 ? (i % cols) : cols - 1 - (i % cols);
+      pts.push({ x: c, y: -r }); // Go up
     }
-    pts.push({ x: px, y: py });
+  } else if (algo === 1) {
+    // Vertical Serpentine
+    const rows = 4 + (variation % 5); // 4 to 8 rows
+    for (let i = 0; i <= totalPoints; i++) {
+      const c = Math.floor(i / rows);
+      const r = c % 2 === 0 ? (i % rows) : rows - 1 - (i % rows);
+      pts.push({ x: c, y: -r });
+    }
+  } else if (algo === 2) {
+    // Outward Square Spiral
+    let x = 0, y = 0;
+    let dx = 1, dy = 0;
+    let segmentLen = 1;
+    let passed = 0;
+    for (let i = 0; i <= totalPoints; i++) {
+      pts.push({ x, y });
+      x += dx; y += dy;
+      passed++;
+      if (passed === segmentLen) {
+        passed = 0;
+        // Turn right
+        const temp = dx; dx = dy; dy = -temp;
+        if (dy === 0) segmentLen++; // Increase length every horizontal turn
+      }
+    }
+  } else if (algo === 3) {
+    // Diagonal zig-zag staircase
+    const stepSize = 2 + (variation % 3);
+    let x = 0, y = 0;
+    let movingRight = true;
+    for (let i = 0; i <= totalPoints; i++) {
+      pts.push({ x, y });
+      if (i % stepSize === stepSize - 1) {
+        movingRight = !movingRight;
+      }
+      if (movingRight) x += 1;
+      else y -= 1;
+    }
+  } else {
+    // Castle steps / U-Shapes
+    const w = 2 + (variation % 2); // 2 or 3 width
+    const h = 2 + (variation % 3); // 2 to 4 height
+    let x = 0, y = 0;
+    for (let i = 0; i <= totalPoints; i++) {
+      pts.push({ x, y });
+      const cycle = i % (w * 2 + h * 2);
+      if (cycle < w) x += 1;
+      else if (cycle < w + h) y -= 1;
+      else if (cycle < w * 2 + h) x -= 1;
+      else y -= 1;
+    }
   }
   
-  // Normalize bounds to exactly 0..1 bounding box
+  // Find bounds
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
   pts.forEach(p => {
     if (p.x < minX) minX = p.x;
@@ -421,21 +432,16 @@ function generateProceduralShape(level, totalPoints) {
     if (p.y > maxY) maxY = p.y;
   });
   
-  const width = Math.max(0.0001, maxX - minX);
-  const height = Math.max(0.0001, maxY - minY);
-  
-  return pts.map(p => ({
-    x: (p.x - minX) / width,
-    y: (p.y - minY) / height
-  }));
+  return { pts, minX, maxX, minY, maxY };
 }
 
 function buildBoardForLevel(level) {
   gameState.spaces = [];
   const width = canvas.width;
   
-  // Generate [0..1] normalized path
-  const normalizedPts = generateProceduralShape(level, FINISH);
+  // Generate clean grid path
+  const gridData = generateGridShape(level, FINISH);
+  const gridPts = gridData.pts;
   
   // 1. Generate Specials deterministically
   gameState.levelSpecials = {};
@@ -466,31 +472,20 @@ function buildBoardForLevel(level) {
   for (let r = 0; r < numResets; r++) { const idx = getUniqueIdx(); if (idx !== -1) gameState.levelSpecials[idx] = { type: "reset", label: "💥 RESET", effect: -idx, color: "#ff3a5c" }; }
   for (let f = 0; f < numFreezes; f++) { const idx = getUniqueIdx(); if (idx !== -1) gameState.levelSpecials[idx] = { type: "freeze", label: "❄️ FREEZE", effect: 0, color: "#00b8ff" }; }
 
-  // Auto-Scale to prevent cramping
-  const tileSpacing = 110; // Guarantees 110px of virtual distance roughly per step
-  let totalDist = 0;
-  for (let i = 1; i <= FINISH; i++) {
-    const dx = normalizedPts[i].x - normalizedPts[i-1].x;
-    const dy = normalizedPts[i].y - normalizedPts[i-1].y;
-    totalDist += Math.sqrt(dx*dx + dy*dy);
-  }
+  // Auto-Scale to prevent cramping using perfect grid distances
+  const TILE_SPACING = 85;
+  const paddingX = 80;
+  const paddingY = 80;
   
-  // Calculate raw scalar needed to hit our target total length
-  const targetLength = FINISH * tileSpacing;
-  const scalar = targetLength / Math.max(totalDist, 0.001);
+  const gridWidth = gridData.maxX - gridData.minX;
+  const gridHeight = gridData.maxY - gridData.minY;
   
-  // Apply scalar and padding
-  const padding = 100;
-  let boundingWidth = scalar;
-  let boundingHeight = scalar;
-  
-  // Optional: keep aspect ratio by using scalar for both, so shapes don't distort
-  gameState.virtualWidth = boundingWidth + padding * 2;
-  gameState.virtualHeight = boundingHeight + padding * 2;
+  gameState.virtualWidth = (gridWidth * TILE_SPACING) + paddingX * 2;
+  gameState.virtualHeight = (gridHeight * TILE_SPACING) + paddingY * 2;
   
   for (let i = 0; i <= FINISH; i++) {
-    const px = padding + normalizedPts[i].x * boundingWidth;
-    const py = padding + normalizedPts[i].y * boundingHeight;
+    const px = paddingX + (gridPts[i].x - gridData.minX) * TILE_SPACING;
+    const py = paddingY + (gridPts[i].y - gridData.minY) * TILE_SPACING;
     
     let type = "normal";
     let label = "";
@@ -578,19 +573,15 @@ function updateCamera() {
   const W = canvas.width;
   const H = canvas.height;
   
-  // Calculate scaled viewport size based on target zoom
-  const viewW = W / camera.targetZoom;
-  const viewH = H / camera.targetZoom;
+  // Calculate scaled viewport size
+  const viewW = W;
+  const viewH = H;
   
   // We want to center the player
   let desiredX = active.visualX - viewW / 2;
   let desiredY = active.visualY - viewH / 2;
   
-  // For better pacing, look slightly ahead horizontally or vertically based on current segment
-  // (We'll just look a bit up as a safe default for now, or skip look-ahead so zoom feels natural)
-  desiredY -= 20;
-
-  // Clamp camera so we don't expose too much black void around the massive boards
+  // Clamp camera so we don't expose too much black void
   const maxScrollX = Math.max(0, (gameState.virtualWidth || W) - viewW);
   const maxScrollY = Math.max(0, (gameState.virtualHeight || H) - viewH);
   
@@ -600,10 +591,9 @@ function updateCamera() {
   camera.targetX = desiredX;
   camera.targetY = desiredY;
 
-  // Smooth lerp camera pan & zoom
+  // Smooth lerp camera pan
   camera.x += (camera.targetX - camera.x) * 0.08;
   camera.y += (camera.targetY - camera.y) * 0.08;
-  camera.zoom += (camera.targetZoom - camera.zoom) * 0.08;
 }
 
 function renderLoop() {
@@ -622,13 +612,7 @@ function renderLoop() {
     gameState.screenShake *= 0.88;
   }
 
-  // Apply Camera Zoom & Panning
-  // We zoom from the center of the viewport
-  ctx.translate(canvas.width / 2, canvas.height / 2);
-  ctx.scale(camera.zoom, camera.zoom);
-  ctx.translate(-canvas.width / 2, -canvas.height / 2);
-  
-  // Pan to camera position
+  // Apply Camera Panning
   ctx.translate(-camera.x, -camera.y);
 
   // Expand clipping region to draw a larger virtual canvas
@@ -1610,16 +1594,6 @@ function initEvents() {
       setupScreen.style.opacity = "1";
     }
   });
-
-  // Zoom controls
-  if (btnZoomIn && btnZoomOut) {
-    btnZoomIn.addEventListener("click", () => {
-      camera.targetZoom = Math.min(2.5, camera.targetZoom + 0.25);
-    });
-    btnZoomOut.addEventListener("click", () => {
-      camera.targetZoom = Math.max(0.4, camera.targetZoom - 0.25);
-    });
-  }
 }
 
 /* ==========================================================================
