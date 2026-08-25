@@ -164,8 +164,21 @@ let selectedRedAvatarIdx = 0;
 let selectedBlueAvatarIdx = 1;
 
 function getShapeName(level) {
-  const algos = ["Serpentine Grid", "Helix Spiral", "Sine Wave", "Hourglass Loop", "Canyon Zigzag"];
-  return `${algos[(level - 1) % 5]} (L${level})`;
+  const families = [
+    "Horizontal Serpentine", "Vertical Serpentine",
+    "CW Square Spiral",     "CCW Square Spiral",
+    "Diagonal Staircase",   "U-Shape Comb",
+    "Zigzag Columns",       "Expanding L-Shapes",
+    "Brick-Layer Grid",     "Diamond Serpentine",
+    "Cross Winding",        "Triangle Stack",
+    "Wave-Step",            "Tall Rectangle Spiral",
+    "Figure-8 Loop",        "Maze Corridors",
+    "Caterpillar",          "Tall Column Snake",
+    "Double-Back Snake",    "Stacked Arches"
+  ];
+  const family = (level - 1) % 20;
+  const variation = Math.floor((level - 1) / 20) % 10;
+  return `${families[family]} v${variation + 1} (L${level})`;
 }
 
 function initSetupScreen() {
@@ -228,6 +241,34 @@ function initSetupScreen() {
       showToast(`🔒 Clear Level ${gameState.selectedShapeLevel} in Solo Mode to unlock this shape!`);
     }
   });
+
+  // Top Game Hub Switcher
+  const tabHazardRush = document.getElementById("tabHazardRush");
+  const tabCrossCaps = document.getElementById("tabCrossCaps");
+  const tabArcadeMore = document.getElementById("tabArcadeMore");
+  const panelHazardRush = document.getElementById("panelHazardRush");
+  const panelCrossCaps = document.getElementById("panelCrossCaps");
+  const panelArcadeMore = document.getElementById("panelArcadeMore");
+
+  function switchGameTab(selectedTab, targetPanel) {
+    [tabHazardRush, tabCrossCaps, tabArcadeMore].forEach(t => t && t.classList.remove("active"));
+    [panelHazardRush, panelCrossCaps, panelArcadeMore].forEach(p => {
+      if (p) {
+        p.classList.remove("active");
+        p.style.display = "none";
+      }
+    });
+
+    if (selectedTab) selectedTab.classList.add("active");
+    if (targetPanel) {
+      targetPanel.classList.add("active");
+      targetPanel.style.display = "flex";
+    }
+  }
+
+  if (tabHazardRush) tabHazardRush.addEventListener("click", () => switchGameTab(tabHazardRush, panelHazardRush));
+  if (tabCrossCaps) tabCrossCaps.addEventListener("click", () => switchGameTab(tabCrossCaps, panelCrossCaps));
+  if (tabArcadeMore) tabArcadeMore.addEventListener("click", () => switchGameTab(tabArcadeMore, panelArcadeMore));
 
   // Mode Selection
   modeAi.addEventListener("click", () => {
@@ -358,71 +399,241 @@ function buildBoard() {
 
 function generateGridShape(level, totalPoints) {
   let pts = [];
-  // Use algo logic to get 50+ shapes using grids
-  const algo = (level - 1) % 5;
-  const variation = Math.floor((level - 1) / 5) % 10; 
-  
-  if (algo === 0) {
-    // Horizontal Serpentine
-    const cols = 4 + (variation % 5); // 4 to 8 cols
+  // 20 families × 10 variations = 200 shapes
+  const family = (level - 1) % 20;
+  const variation = Math.floor((level - 1) / 20) % 10;
+
+  if (family === 0) {
+    // HORIZONTAL SERPENTINE (4-8 cols)
+    const cols = 4 + (variation % 5);
     for (let i = 0; i <= totalPoints; i++) {
       const r = Math.floor(i / cols);
       const c = r % 2 === 0 ? (i % cols) : cols - 1 - (i % cols);
-      pts.push({ x: c, y: -r }); // Go up
+      pts.push({ x: c, y: -r });
     }
-  } else if (algo === 1) {
-    // Vertical Serpentine
-    const rows = 4 + (variation % 5); // 4 to 8 rows
+  } else if (family === 1) {
+    // VERTICAL SERPENTINE (4-8 rows)
+    const rows = 4 + (variation % 5);
     for (let i = 0; i <= totalPoints; i++) {
       const c = Math.floor(i / rows);
       const r = c % 2 === 0 ? (i % rows) : rows - 1 - (i % rows);
       pts.push({ x: c, y: -r });
     }
-  } else if (algo === 2) {
-    // Outward Square Spiral
-    let x = 0, y = 0;
-    let dx = 1, dy = 0;
-    let segmentLen = 1;
-    let passed = 0;
+  } else if (family === 2) {
+    // OUTWARD SQUARE SPIRAL (clockwise)
+    let x = 0, y = 0, dx = 1, dy = 0, seg = 1, passed = 0;
     for (let i = 0; i <= totalPoints; i++) {
       pts.push({ x, y });
-      x += dx; y += dy;
-      passed++;
-      if (passed === segmentLen) {
+      x += dx; y += dy; passed++;
+      if (passed === seg) {
         passed = 0;
-        // Turn right
-        const temp = dx; dx = dy; dy = -temp;
-        if (dy === 0) segmentLen++; // Increase length every horizontal turn
+        const tmp = dx; dx = dy; dy = -tmp;
+        if (dy === 0) seg++;
       }
     }
-  } else if (algo === 3) {
-    // Diagonal zig-zag staircase
-    const stepSize = 2 + (variation % 3);
-    let x = 0, y = 0;
-    let movingRight = true;
+  } else if (family === 3) {
+    // INWARD SQUARE SPIRAL (counter-clockwise)
+    let x = 0, y = 0, dx = 1, dy = 0, seg = 1, passed = 0;
     for (let i = 0; i <= totalPoints; i++) {
       pts.push({ x, y });
-      if (i % stepSize === stepSize - 1) {
-        movingRight = !movingRight;
+      x += dx; y += dy; passed++;
+      if (passed === seg) {
+        passed = 0;
+        const tmp = dx; dx = -dy; dy = tmp;
+        if (dy === 0) seg++;
       }
-      if (movingRight) x += 1;
-      else y -= 1;
+    }
+  } else if (family === 4) {
+    // DIAGONAL STAIRCASE (right then up, varied step)
+    const step = 2 + (variation % 4);
+    let x = 0, y = 0, right = true;
+    for (let i = 0; i <= totalPoints; i++) {
+      pts.push({ x, y });
+      if (i % step === step - 1) right = !right;
+      if (right) x += 1; else y -= 1;
+    }
+  } else if (family === 5) {
+    // U-SHAPE COMB (teeth going up)
+    const armH = 3 + (variation % 4);
+    const gap = 2 + (variation % 3);
+    let x = 0, y = 0, goingUp = true;
+    for (let i = 0; i <= totalPoints; i++) {
+      pts.push({ x, y });
+      if (goingUp) {
+        y -= 1;
+        if (Math.abs(y) >= armH) { goingUp = false; x += gap > 1 ? 1 : 1; }
+      } else {
+        y += 1;
+        if (y >= 0) { goingUp = true; x += 1; }
+      }
+    }
+  } else if (family === 6) {
+    // ZIGZAG COLUMNS (down-right-up-right pattern)
+    const colH = 3 + (variation % 5);
+    let x = 0, y = 0, down = true;
+    for (let i = 0; i <= totalPoints; i++) {
+      pts.push({ x, y });
+      if (down) {
+        y += 1;
+        if (y >= colH) { down = false; x += 1; }
+      } else {
+        y -= 1;
+        if (y <= 0) { down = true; x += 1; }
+      }
+    }
+  } else if (family === 7) {
+    // EXPANDING L-SHAPES
+    let x = 0, y = 0, armLen = 2 + (variation % 3);
+    for (let i = 0; i <= totalPoints; ) {
+      for (let j = 0; j < armLen && i <= totalPoints; j++, i++) pts.push({ x: x + j, y });
+      x += armLen - 1; armLen++;
+      for (let j = 1; j < armLen && i <= totalPoints; j++, i++) pts.push({ x, y: y - j });
+      y -= armLen - 1;
+    }
+  } else if (family === 8) {
+    // BRICK-LAYER OFFSET ROWS
+    const cols = 5 + (variation % 4);
+    for (let i = 0; i <= totalPoints; i++) {
+      const r = Math.floor(i / cols);
+      const c = r % 2 === 0 ? (i % cols) : cols - 1 - (i % cols);
+      const offset = (r % 2) * 0; // no offset in grid coords
+      pts.push({ x: c * 2, y: -r * 2 }); // double-spaced
+    }
+  } else if (family === 9) {
+    // DIAMOND GRID SERPENTINE (rotated 45°)
+    const cols = 4 + (variation % 4);
+    for (let i = 0; i <= totalPoints; i++) {
+      const r = Math.floor(i / cols);
+      const c = r % 2 === 0 ? (i % cols) : cols - 1 - (i % cols);
+      pts.push({ x: c - r, y: -(c + r) });
+    }
+  } else if (family === 10) {
+    // CROSS/PLUS WINDING PATH
+    const arm = 3 + (variation % 4);
+    const dirs = [[1,0],[0,-1],[-1,0],[0,1]];
+    let x = 0, y = 0, i = 0, di = 0;
+    while (i <= totalPoints) {
+      for (let s = 0; s < arm && i <= totalPoints; s++, i++) {
+        pts.push({ x, y });
+        x += dirs[di % 4][0]; y += dirs[di % 4][1];
+      }
+      di++;
+    }
+  } else if (family === 11) {
+    // TRIANGLE STACKING (row gets shorter each level)
+    const base = 6 + (variation % 5);
+    let x = 0, y = 0, rowW = base, rowStart = 0, col = 0;
+    for (let i = 0; i <= totalPoints; i++) {
+      pts.push({ x: rowStart + col, y });
+      col++;
+      if (col >= rowW) {
+        col = 0; y -= 1;
+        rowStart += Math.floor((base - rowW + 1) / 2);
+        rowW = Math.max(1, rowW - 1);
+      }
+    }
+  } else if (family === 12) {
+    // WAVE-STEP (sine-like but grid-snapped)
+    const period = 4 + (variation % 4);
+    let x = 0, y = 0;
+    for (let i = 0; i <= totalPoints; i++) {
+      pts.push({ x, y });
+      const phase = i % (period * 2);
+      if (phase < period / 2) y -= 1;
+      else if (phase < period) x += 1;
+      else if (phase < period + period / 2) y += 1;
+      else x += 1;
+    }
+  } else if (family === 13) {
+    // OUTWARD RECTANGULAR SPIRAL (taller than wide)
+    let x = 0, y = 0, w = 1, h = 2;
+    const dirs = [[1,0],[0,-1],[-1,0],[0,1]];
+    let di = 0, i = 0;
+    while (i <= totalPoints) {
+      const dist = di % 2 === 0 ? w : h;
+      for (let s = 0; s < dist && i <= totalPoints; s++, i++) {
+        pts.push({ x, y });
+        x += dirs[di % 4][0]; y += dirs[di % 4][1];
+      }
+      if (di % 2 === 0) h++; else w++;
+      di++;
+    }
+  } else if (family === 14) {
+    // FIGURE-8 / BOWTIE GRID LOOPS
+    const halfW = 3 + (variation % 3);
+    const halfH = 2 + (variation % 3);
+    let x = 0, y = 0, phase = 0;
+    for (let i = 0; i <= totalPoints; i++) {
+      pts.push({ x, y });
+      const seg = i % (halfW * 2 + halfH * 2);
+      if (seg < halfW) x += 1;
+      else if (seg < halfW + halfH) y -= 1;
+      else if (seg < halfW * 2 + halfH) x -= 1;
+      else y += 1;
+    }
+  } else if (family === 15) {
+    // MAZE CORRIDORS (alternating long runs)
+    const runH = 4 + (variation % 5);
+    const runW = 3 + (variation % 4);
+    let x = 0, y = 0, di = 0;
+    const dirs = [[1,0],[0,-1],[-1,0],[0,-1]]; // right, up, left, up pattern
+    const lens = [runW, runH, runW, 1];
+    for (let i = 0; i <= totalPoints; ) {
+      const len = lens[di % 4];
+      for (let s = 0; s < len && i <= totalPoints; s++, i++) {
+        pts.push({ x, y });
+        x += dirs[di % 4][0]; y += dirs[di % 4][1];
+      }
+      di++;
+    }
+  } else if (family === 16) {
+    // CATERPILLAR (horizontal run with vertical spur every N)
+    const runLen = 3 + (variation % 4);
+    const spurH = 2 + (variation % 3);
+    let x = 0, y = 0, i = 0;
+    while (i <= totalPoints) {
+      for (let s = 0; s < runLen && i <= totalPoints; s++, i++) { pts.push({ x, y }); x += 1; }
+      for (let s = 0; s < spurH && i <= totalPoints; s++, i++) { pts.push({ x, y }); y -= 1; }
+      for (let s = 0; s < runLen && i <= totalPoints; s++, i++) { pts.push({ x, y }); x -= 1; }
+      for (let s = 0; s < spurH && i <= totalPoints; s++, i++) { pts.push({ x, y }); y -= 1; }
+    }
+  } else if (family === 17) {
+    // TALL COLUMNS SERPENTINE (very narrow, tall columns)
+    const colH = 6 + (variation % 6);
+    let x = 0, y = 0, down = false;
+    for (let i = 0; i <= totalPoints; i++) {
+      pts.push({ x, y });
+      if (down) { y += 1; if (y >= 0) { down = false; x += 1; } }
+      else { y -= 1; if (-y >= colH) { down = true; x += 1; } }
+    }
+  } else if (family === 18) {
+    // DOUBLE-BACK SNAKE (goes right, doubles back partially)
+    const fwd = 5 + (variation % 5);
+    const back = 2 + (variation % 3);
+    let x = 0, y = 0, i = 0;
+    while (i <= totalPoints) {
+      for (let s = 0; s < fwd && i <= totalPoints; s++, i++) { pts.push({ x, y }); x += 1; }
+      y -= 1;
+      for (let s = 0; s < back && i <= totalPoints; s++, i++) { pts.push({ x, y }); x -= 1; }
+      y -= 1;
     }
   } else {
-    // Castle steps / U-Shapes
-    const w = 2 + (variation % 2); // 2 or 3 width
-    const h = 2 + (variation % 3); // 2 to 4 height
-    let x = 0, y = 0;
-    for (let i = 0; i <= totalPoints; i++) {
-      pts.push({ x, y });
-      const cycle = i % (w * 2 + h * 2);
-      if (cycle < w) x += 1;
-      else if (cycle < w + h) y -= 1;
-      else if (cycle < w * 2 + h) x -= 1;
-      else y -= 1;
+    // family === 19: STACKED ARCHES (flat bottom, arched top)
+    const archW = 4 + (variation % 4);
+    const archH = 2 + (variation % 3);
+    let x = 0, y = 0, i = 0;
+    while (i <= totalPoints) {
+      // bottom run
+      for (let s = 0; s < archW && i <= totalPoints; s++, i++) { pts.push({ x, y }); x += 1; }
+      // up
+      for (let s = 0; s < archH && i <= totalPoints; s++, i++) { pts.push({ x, y }); y -= 1; }
+      // top run back
+      for (let s = 0; s < archW && i <= totalPoints; s++, i++) { pts.push({ x, y }); x -= 1; }
+      // move up to next arch
+      for (let s = 0; s < archH && i <= totalPoints; s++, i++) { pts.push({ x, y }); y -= 1; }
     }
   }
-  
+
   // Find bounds
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
   pts.forEach(p => {
@@ -431,7 +642,7 @@ function generateGridShape(level, totalPoints) {
     if (p.y < minY) minY = p.y;
     if (p.y > maxY) maxY = p.y;
   });
-  
+
   return { pts, minX, maxX, minY, maxY };
 }
 
@@ -469,7 +680,13 @@ function buildBoardForLevel(level) {
   }
 
   // Generate bonuses, traps, resets, freezes, shields, wormholes
-  for (let b = 0; b < numBonuses; b++) { const idx = getUniqueIdx(); if (idx !== -1) gameState.levelSpecials[idx] = { type: "bonus", label: `⚡ +${nextRand() < 0.5 ? 5 : 10}`, effect: nextRand() < 0.5 ? 5 : 10, color: "#10e394" }; }
+  for (let b = 0; b < numBonuses; b++) {
+    const idx = getUniqueIdx();
+    if (idx !== -1) {
+      const bonusVal = nextRand() < 0.5 ? 5 : 10; // ONE call, used for both label AND effect
+      gameState.levelSpecials[idx] = { type: "bonus", label: `⚡ +${bonusVal}`, effect: bonusVal, color: "#10e394" };
+    }
+  }
   for (let t = 0; t < numTraps; t++) { const idx = getUniqueIdx(); if (idx !== -1) { const vals = [-2, -3, -5, -8, -10]; const val = vals[Math.floor(nextRand() * Math.min(5, 1+Math.floor(level/100)))]; gameState.levelSpecials[idx] = { type: "trap", label: `💀 ${val}`, effect: val, color: "#ff7e36" }; } }
   for (let r = 0; r < numResets; r++) { const idx = getUniqueIdx(); if (idx !== -1) gameState.levelSpecials[idx] = { type: "reset", label: "💥 RESET", effect: -idx, color: "#ff3a5c" }; }
   for (let f = 0; f < numFreezes; f++) { const idx = getUniqueIdx(); if (idx !== -1) gameState.levelSpecials[idx] = { type: "freeze", label: "❄️ FREEZE", effect: 0, color: "#00b8ff" }; }
@@ -1068,21 +1285,28 @@ function floatingText(text, color, x, y) {
    LOCAL STORAGE STATS ENGINE
    ========================================================================== */
 function loadStats() {
-  const loaded = localStorage.getItem("trail_race_stats");
+  const loaded = localStorage.getItem("hazard_rush_stats");
   if (loaded) {
     gameState.stats = JSON.parse(loaded);
   } else {
     gameState.stats = { games: 0, wins: 0, kos: 0, traps: 0 };
   }
   
-  const loadedCleared = localStorage.getItem("trail_race_highest_cleared");
+  const loadedCleared = localStorage.getItem("hazard_rush_highest_cleared");
   gameState.highestClearedLevel = loadedCleared ? parseInt(loadedCleared) : 0;
+  
+  // Restore the last played level so players resume where they left off
+  const savedLevel = localStorage.getItem("hazard_rush_current_level");
+  if (savedLevel) {
+    gameState.currentLevel = Math.max(1, Math.min(500, parseInt(savedLevel)));
+  }
   
   updateStatsDisplay();
 }
 
 function saveStats() {
-  localStorage.setItem("trail_race_stats", JSON.stringify(gameState.stats));
+  localStorage.setItem("hazard_rush_stats", JSON.stringify(gameState.stats));
+  localStorage.setItem("hazard_rush_current_level", String(gameState.currentLevel));
   updateStatsDisplay();
 }
 
@@ -1527,7 +1751,7 @@ function triggerVictory(winner) {
       const activeLvl = gameState.currentLevel;
       if (activeLvl > gameState.highestClearedLevel) {
         gameState.highestClearedLevel = activeLvl;
-        localStorage.setItem("trail_race_highest_cleared", activeLvl);
+        localStorage.setItem("hazard_rush_highest_cleared", activeLvl);
         
         logAction(`🏆 <strong>LEVEL UNLOCKED!</strong> Cleared Level ${activeLvl}! Shape is now unlocked for Local PVP.`, "knockout");
         showToast(`🏆 Level ${activeLvl} Cleared! Shape Unlocked!`);

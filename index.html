@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
-  <meta name="description" content="An enterprise-grade, highly polished, and addictive Snake Trail Race board game. Play against AI or with a friend local.">
-  <title>Snake Trail Race - Premium Arcade Edition</title>
+  <meta name="description" content="Hazard Rush — dodge traps, grab shields, warp through wormholes. Play vs AI or a friend! Addictive tile-based racing board game.">
+  <title>Hazard Rush — Premium Arcade Board Game</title>
   
   <!-- PWA & Mobile Install configurations -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#080a11">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Snake Trail">
+  <meta name="apple-mobile-web-app-title" content="Hazard Rush">
   <link rel="apple-touch-icon" href="icon.jpg">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -32,7 +32,7 @@
     <header class="header">
       <div class="logo">
         <div class="logo-icon"><i class="fa-solid fa-gamepad"></i></div>
-        <h1 class="logo-text">SNAKE <span>TRAIL</span></h1>
+        <h1 class="logo-text">HAZARD <span>RUSH</span></h1>
       </div>
       <div class="header-controls">
         <button class="btn-icon" id="pwaInstallBtn" title="Install App" style="display: none;">📥</button>
@@ -44,84 +44,170 @@
 
     <!-- SETUP SCREEN -->
     <div class="setup-screen" id="setupScreen">
-      <h2 class="setup-title">SNAKE TRAIL</h2>
-      <p class="setup-subtitle">Select Mode & Characters</p>
-      
-      <!-- Mode Selection Tabs -->
-      <div class="mode-selector">
-        <button class="mode-tab active" id="modeAi">
-          🤖 VS Computer
+      <!-- ARCADE GAME HUB HEADER -->
+      <div class="arcade-hub-header">
+        <h2 class="setup-title">ARCADE <span>HUB</span></h2>
+        <p class="setup-subtitle">Select a Game &amp; Battle Mode</p>
+      </div>
+
+      <!-- MAIN GAME SELECTION TABS -->
+      <div class="game-select-tabs" id="gameSelectTabs">
+        <button class="game-tab active" id="tabHazardRush" type="button">
+          <div class="tab-icon">⚡</div>
+          <div class="tab-meta">
+            <span class="tab-badge">200+ SHAPES</span>
+            <span class="tab-name">HAZARD RUSH</span>
+          </div>
         </button>
-        <button class="mode-tab" id="modePvp">
-          👥 Pass & Play
+        <button class="game-tab" id="tabCrossCaps" type="button">
+          <div class="tab-icon">⚔️</div>
+          <div class="tab-meta">
+            <span class="tab-badge gold">CAP DUEL</span>
+            <span class="tab-name">CROSSCAPS</span>
+          </div>
+        </button>
+        <button class="game-tab" id="tabArcadeMore" type="button">
+          <div class="tab-icon">✨</div>
+          <div class="tab-meta">
+            <span class="tab-badge blue">EXPANSION</span>
+            <span class="tab-name">MORE MODES</span>
+          </div>
         </button>
       </div>
 
-      <!-- LEVEL SELECTOR (For Solo vs AI) -->
-      <div class="setup-control-group" id="levelSelectorGroup">
-        <label>SELECT RACE LEVEL</label>
-        <div style="display:flex; justify-content:center; margin: 4px 0;">
-          <canvas id="levelPreviewCanvas" width="100" height="120" style="background:#080a11; border-radius:8px; border:1px solid rgba(255,255,255,0.1);"></canvas>
+      <!-- PANEL 1: HAZARD RUSH CONFIG -->
+      <div class="game-panel active" id="panelHazardRush">
+        <!-- Sub-Mode Selection Tabs -->
+        <div class="mode-selector">
+          <button class="mode-tab active" id="modeAi" type="button">
+            🤖 VS Computer
+          </button>
+          <button class="mode-tab" id="modePvp" type="button">
+            👥 Pass &amp; Play
+          </button>
         </div>
-        <div class="selector-control">
-          <button type="button" class="btn-icon" id="prevLevelBtn">&lt;</button>
-          <span class="selector-value" id="levelValue">Level 1</span>
-          <button type="button" class="btn-icon" id="nextLevelBtn">&gt;</button>
+
+        <!-- LEVEL SELECTOR (For Solo vs AI) -->
+        <div class="setup-control-group" id="levelSelectorGroup">
+          <label>SELECT RACE LEVEL</label>
+          <div style="display:flex; justify-content:center; margin: 4px 0;">
+            <canvas id="levelPreviewCanvas" width="100" height="120" style="background:#080a11; border-radius:8px; border:1px solid rgba(255,255,255,0.1);"></canvas>
+          </div>
+          <div class="selector-control">
+            <button type="button" class="btn-icon" id="prevLevelBtn">&lt;</button>
+            <span class="selector-value" id="levelValue">Level 1</span>
+            <button type="button" class="btn-icon" id="nextLevelBtn">&gt;</button>
+          </div>
+          <p class="selector-hint" id="levelHint">Board Shape: Serpentine Grid (L1)</p>
         </div>
-        <p class="selector-hint" id="levelHint">Board Shape: Serpentine Grid (L1)</p>
+
+        <!-- BOARD SHAPE SELECTOR (For PVP) -->
+        <div class="setup-control-group" id="shapeSelectorGroup" style="display: none;">
+          <label>SELECT BOARD SHAPE</label>
+          <div style="display:flex; justify-content:center; margin: 4px 0;">
+            <canvas id="shapePreviewCanvas" width="100" height="120" style="background:#080a11; border-radius:8px; border:1px solid rgba(255,255,255,0.1);"></canvas>
+          </div>
+          <div class="selector-control">
+            <button type="button" class="btn-icon" id="prevShapeBtn">&lt;</button>
+            <span class="selector-value" id="shapeValue">Classic Shape (L1)</span>
+            <button type="button" class="btn-icon" id="nextShapeBtn">&gt;</button>
+          </div>
+          <p class="selector-hint" id="shapeHint">Cleared level shapes unlocked: 1</p>
+        </div>
+
+        <!-- Player customization cards -->
+        <div class="players-config">
+          <!-- Red Player -->
+          <div class="player-config-card red">
+            <div class="player-config-header">
+              <span class="player-config-title red-indicator">🔴 PLAYER 1 (RED)</span>
+            </div>
+            <div class="input-group">
+              <label for="redNameInput">Racer Name</label>
+              <input type="text" id="redNameInput" value="RED RACER" maxlength="10">
+            </div>
+            <div class="input-group">
+              <label>Avatar</label>
+              <div class="avatar-grid red" id="redAvatars"></div>
+            </div>
+          </div>
+
+          <!-- Blue Player -->
+          <div class="player-config-card blue" id="bluePlayerConfig" style="opacity: 0.5; pointer-events: none;">
+            <div class="player-config-header">
+              <span class="player-config-title blue-indicator">🔵 PLAYER 2 (BLUE)</span>
+            </div>
+            <div class="input-group">
+              <label for="blueNameInput">Racer Name</label>
+              <input type="text" id="blueNameInput" value="AI COMP" maxlength="10">
+            </div>
+            <div class="input-group">
+              <label>Avatar</label>
+              <div class="avatar-grid blue" id="blueAvatars"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Start button -->
+        <button class="btn-primary" id="startGameBtn" type="button" style="margin-top: 6px;">
+          🚀 START THE RACE
+        </button>
       </div>
 
-      <!-- BOARD SHAPE SELECTOR (For PVP) -->
-      <div class="setup-control-group" id="shapeSelectorGroup" style="display: none;">
-        <label>SELECT BOARD SHAPE</label>
-        <div style="display:flex; justify-content:center; margin: 4px 0;">
-          <canvas id="shapePreviewCanvas" width="100" height="120" style="background:#080a11; border-radius:8px; border:1px solid rgba(255,255,255,0.1);"></canvas>
-        </div>
-        <div class="selector-control">
-          <button type="button" class="btn-icon" id="prevShapeBtn">&lt;</button>
-          <span class="selector-value" id="shapeValue">Classic Shape (L1)</span>
-          <button type="button" class="btn-icon" id="nextShapeBtn">&gt;</button>
-        </div>
-        <p class="selector-hint" id="shapeHint">Cleared level shapes unlocked: 1</p>
-      </div>
+      <!-- PANEL 2: CROSSCAPS SHOWCASE & LAUNCH -->
+      <div class="game-panel" id="panelCrossCaps" style="display: none;">
+        <div class="crosscaps-showcase-card">
+          <div class="showcase-header">
+            <div class="showcase-icon">⚔️</div>
+            <div>
+              <h3 class="showcase-title">CROSSCAPS BATTLE</h3>
+              <p class="showcase-tag">Tactical Push-Your-Luck Cap War</p>
+            </div>
+          </div>
 
-      <!-- Player customization cards -->
-      <div class="players-config">
-        <!-- Red Player -->
-        <div class="player-config-card red">
-          <div class="player-config-header">
-            <span class="player-config-title red-indicator">🔴 PLAYER 1 (RED)</span>
+          <div class="showcase-features">
+            <div class="feature-pill"><i class="fa-solid fa-dice"></i> 3D Physics Die</div>
+            <div class="feature-pill"><i class="fa-solid fa-shield-halved"></i> Sabotage Moves</div>
+            <div class="feature-pill"><i class="fa-solid fa-star"></i> Golden Wild Caps</div>
+            <div class="feature-pill"><i class="fa-solid fa-trophy"></i> Best-of-3 Series</div>
           </div>
-          <div class="input-group">
-            <label for="redNameInput">Racer Name</label>
-            <input type="text" id="redNameInput" value="RED RACER" maxlength="10">
-          </div>
-          <div class="input-group">
-            <label>Avatar</label>
-            <div class="avatar-grid red" id="redAvatars"></div>
-          </div>
-        </div>
 
-        <!-- Blue Player -->
-        <div class="player-config-card blue" id="bluePlayerConfig" style="opacity: 0.5; pointer-events: none;">
-          <div class="player-config-header">
-            <span class="player-config-title blue-indicator">🔵 PLAYER 2 (BLUE)</span>
+          <div class="showcase-rules-box">
+            <h4><i class="fa-solid fa-circle-info"></i> How it Works:</h4>
+            <p>Roll the die and push that exact count of caps across into your rival's zone. First to clear all own caps wins!</p>
           </div>
-          <div class="input-group">
-            <label for="blueNameInput">Racer Name</label>
-            <input type="text" id="blueNameInput" value="AI COMP" maxlength="10">
-          </div>
-          <div class="input-group">
-            <label>Avatar</label>
-            <div class="avatar-grid blue" id="blueAvatars"></div>
-          </div>
+
+          <a href="crosscaps.html" class="btn-primary btn-launch-crosscaps">
+            ⚡ LAUNCH CROSSCAPS ARENA
+          </a>
         </div>
       </div>
 
-      <!-- Start button -->
-      <button class="btn-primary" id="startGameBtn">
-        🚀 START THE RACE
-      </button>
+      <!-- PANEL 3: MORE EXPANSION MODES -->
+      <div class="game-panel" id="panelArcadeMore" style="display: none;">
+        <div class="expansion-hub-card">
+          <div class="expansion-badge">ARCADE ROADMAP</div>
+          <h3 class="expansion-title">MORE MODES IN DEVELOPMENT</h3>
+          <p class="expansion-desc">We're crafting exciting new game types to expand your arcade hub!</p>
+
+          <div class="expansion-grid">
+            <div class="expansion-item">
+              <div class="exp-icon">🔷</div>
+              <div class="exp-name">HEX BLITZ</div>
+              <div class="exp-sub">Hexagonal Territory Clash</div>
+            </div>
+            <div class="expansion-item">
+              <div class="exp-icon">🌀</div>
+              <div class="exp-name">QUANTUM WARP</div>
+              <div class="exp-sub">Portal Time-Attack</div>
+            </div>
+          </div>
+
+          <button type="button" class="btn-primary" style="background: rgba(255,255,255,0.08); border: 1px solid var(--border); box-shadow: none; margin-top: 10px;" onclick="showToast('Stay tuned for new arcade mode drops! 🚀')">
+            🔔 GET NOTIFIED
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- MAIN GAME SCREEN (HIDDEN INITIALLY) -->

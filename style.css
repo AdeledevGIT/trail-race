@@ -134,13 +134,13 @@ h1, h2, h3, h4 {
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 420px;
+  max-width: 480px;
   height: 100vh;
-  max-height: 820px;
+  max-height: 920px;
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  padding: 8px 10px;
+  gap: 8px;
+  padding: 10px 14px;
 }
 
 /* =============================================
@@ -1197,3 +1197,293 @@ canvas {
   0%   { opacity: 0; transform: translateY(10px); }
   100% { opacity: 1; transform: translateY(0); }
 }
+
+/* =============================================
+   ARCADE HUB & GAME SELECTOR
+   ============================================= */
+.arcade-hub-header {
+  text-align: center;
+  margin-bottom: 2px;
+}
+.arcade-hub-header .setup-title span {
+  color: var(--neon-gold);
+}
+
+.game-select-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 4px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+
+.game-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 4px;
+  border-radius: 12px;
+  background: transparent;
+  border: 1.5px solid transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.25, 1);
+  text-align: center;
+}
+
+.game-tab:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-bright);
+}
+
+.game-tab.active {
+  background: linear-gradient(145deg, rgba(200,80,255,0.18), rgba(0,184,255,0.12));
+  border-color: rgba(200,80,255,0.45);
+  color: #ffffff;
+  box-shadow: 0 0 16px rgba(200,80,255,0.22), inset 0 1px 0 rgba(255,255,255,0.12);
+  transform: translateY(-1px);
+}
+
+.game-tab .tab-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.game-tab .tab-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.game-tab .tab-badge {
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: rgba(255, 58, 92, 0.2);
+  border: 1px solid rgba(255, 58, 92, 0.4);
+  color: var(--neon-pink);
+  text-transform: uppercase;
+}
+
+.game-tab .tab-badge.gold {
+  background: rgba(255, 184, 0, 0.2);
+  border-color: rgba(255, 184, 0, 0.4);
+  color: var(--neon-gold);
+}
+
+.game-tab .tab-badge.blue {
+  background: rgba(0, 184, 255, 0.2);
+  border-color: rgba(0, 184, 255, 0.4);
+  color: var(--neon-blue);
+}
+
+.game-tab .tab-name {
+  font-family: 'Fredoka One', cursive;
+  font-size: 11px;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+.game-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: panelFadeIn 0.3s ease;
+}
+
+@keyframes panelFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* =============================================
+   CROSSCAPS SHOWCASE CARD
+   ============================================= */
+.crosscaps-showcase-card {
+  background: linear-gradient(160deg, rgba(255, 51, 88, 0.08), rgba(255, 184, 0, 0.06), rgba(0, 0, 0, 0.4));
+  border: 1.5px solid rgba(255, 184, 0, 0.35);
+  border-radius: 18px;
+  padding: 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.showcase-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.showcase-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(255, 51, 88, 0.3), rgba(255, 184, 0, 0.3));
+  border: 1px solid rgba(255, 184, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  box-shadow: 0 0 15px rgba(255, 184, 0, 0.25);
+}
+
+.showcase-title {
+  font-family: 'Fredoka One', cursive;
+  font-size: 18px;
+  color: #fff;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+
+.showcase-tag {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.showcase-features {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.feature-pill {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 7px 8px;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--text-bright);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.feature-pill i {
+  color: var(--neon-gold);
+  font-size: 11px;
+}
+
+.showcase-rules-box {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.showcase-rules-box h4 {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--neon-gold);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.showcase-rules-box p {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.btn-launch-crosscaps {
+  text-decoration: none;
+  background: linear-gradient(180deg, #ffe066 0%, var(--neon-gold) 60%, #cc8800 100%);
+  color: #120e02;
+  box-shadow: 0 6px 0 #8c5d00, 0 12px 25px -6px rgba(255, 184, 0, 0.5);
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* =============================================
+   EXPANSION HUB CARD (MORE MODES)
+   ============================================= */
+.expansion-hub-card {
+  background: linear-gradient(160deg, rgba(0, 184, 255, 0.08), rgba(157, 78, 221, 0.08), rgba(0, 0, 0, 0.4));
+  border: 1.5px solid rgba(0, 184, 255, 0.3);
+  border-radius: 18px;
+  padding: 18px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: center;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.6);
+}
+
+.expansion-badge {
+  align-self: center;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(0, 184, 255, 0.2);
+  border: 1px solid rgba(0, 184, 255, 0.4);
+  color: var(--neon-blue);
+  text-transform: uppercase;
+}
+
+.expansion-title {
+  font-family: 'Fredoka One', cursive;
+  font-size: 18px;
+  color: #fff;
+  letter-spacing: 0.5px;
+}
+
+.expansion-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  margin-top: -4px;
+}
+
+.expansion-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.expansion-item {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 12px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.exp-icon {
+  font-size: 24px;
+  margin-bottom: 2px;
+}
+
+.exp-name {
+  font-family: 'Fredoka One', cursive;
+  font-size: 13px;
+  color: var(--text-bright);
+}
+
+.exp-sub {
+  font-size: 9px;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+

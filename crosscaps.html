@@ -1,0 +1,1896 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
+<title>CrossCaps — Strategic Stadium Arena</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;800;900&family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root {
+  --bg: #060812;
+  --card-bg: rgba(14, 18, 34, 0.96);
+  --border: rgba(255, 255, 255, 0.1);
+  --border-bright: rgba(255, 255, 255, 0.22);
+  --text: #f0f3fc;
+  --text-muted: rgba(240, 243, 252, 0.55);
+  --red: #ff3358;
+  --red-glow: rgba(255, 51, 88, 0.45);
+  --red-dark: #990022;
+  --gold: #ffb800;
+  --gold-glow: rgba(255, 184, 0, 0.45);
+  --gold-dark: #996e00;
+  --neon-blue: #00d2ff;
+  --neon-green: #00ffa3;
+  --neon-purple: #9d4edd;
+  --neon-orange: #ff7700;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; user-select: none; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: 'Outfit', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-image:
+    radial-gradient(ellipse at 15% 10%, rgba(0, 210, 255, 0.1) 0%, transparent 50%),
+    radial-gradient(ellipse at 85% 90%, rgba(255, 51, 88, 0.1) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(157, 78, 221, 0.05) 0%, transparent 60%);
+}
+.app {
+  width: 100%;
+  max-width: 520px;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: max(6px, env(safe-area-inset-top)) 10px max(8px, env(safe-area-inset-bottom));
+  position: relative;
+  gap: 4px;
+}
+
+/* ── STREAMLINED TOP HEADER HUD ── */
+.top-hub {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  background: rgba(14, 18, 32, 0.85);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 5px 8px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
+}
+
+.scorecard-mini {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1.5px solid transparent;
+  transition: all 0.25s ease;
+}
+.scorecard-mini.red.active {
+  border-color: var(--red);
+  background: rgba(255, 51, 88, 0.15);
+  box-shadow: 0 0 12px -2px var(--red-glow);
+}
+.scorecard-mini.gold.active {
+  border-color: var(--gold);
+  background: rgba(255, 184, 0, 0.15);
+  box-shadow: 0 0 12px -2px var(--gold-glow);
+}
+.cap-avatar {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  flex: none;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px;
+  box-shadow: inset 0 -2px 4px rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.4);
+}
+.cap-avatar.red {
+  background: radial-gradient(circle at 35% 30%, #ff8099, var(--red) 60%, var(--red-dark));
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+}
+.cap-avatar.gold {
+  background: radial-gradient(circle at 35% 30%, #fff099, var(--gold) 60%, var(--gold-dark));
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+}
+.mini-meta { display: flex; flex-direction: column; }
+.mini-name { font-size: 8.5px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.mini-val { font-family: 'Fredoka One', cursive; font-size: 15px; line-height: 1.1; }
+.series-dots { display: flex; gap: 3px; margin-top: 1px; }
+.s-dot {
+  width: 5.5px; height: 5.5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  transition: all 0.3s ease;
+}
+.s-dot.won.red { background: var(--red); border-color: var(--red); box-shadow: 0 0 6px var(--red); }
+.s-dot.won.gold { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 6px var(--gold); }
+
+/* Center Match & Brand Pill */
+.hub-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+.brand-title {
+  font-family: 'Fredoka One', cursive;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  color: #fff;
+}
+.brand-title span { color: var(--gold); }
+.turn-pill {
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.turn-pill.surge {
+  color: var(--neon-orange);
+  animation: heatPulse 1s ease-in-out infinite alternate;
+}
+@keyframes heatPulse {
+  0% { transform: scale(0.98); opacity: 0.85; }
+  100% { transform: scale(1.05); opacity: 1; text-shadow: 0 0 8px var(--neon-orange); }
+}
+
+.hub-actions { display: flex; gap: 4px; }
+.btn-icon {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  font-size: 11px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+.btn-icon:hover { background: rgba(255, 255, 255, 0.12); border-color: var(--border-bright); }
+.btn-icon:active { transform: scale(0.92); }
+
+/* ── EXPANSIVE STADIUM BOARD CANVAS ── */
+.board-container {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  touch-action: none;
+}
+canvas#board {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ── COHESIVE INTEGRATED BOTTOM DOCK ── */
+.bottom-dock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.status-pill {
+  text-align: center;
+  font-size: 12px;
+  min-height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 8px;
+  color: var(--text-muted);
+  font-weight: 600;
+  line-height: 1.2;
+}
+.status-pill b { color: #fff; font-weight: 800; }
+.status-pill .accent { color: var(--gold); font-weight: 800; }
+.status-pill .highlight { color: var(--neon-green); font-weight: 800; }
+.status-pill .danger { color: #ff3358; font-weight: 800; }
+
+/* Action Deck (Clean Swap between Abilities & Launch Bar) */
+.dock-deck {
+  background: rgba(14, 18, 32, 0.85);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 4px;
+  backdrop-filter: blur(12px);
+  position: relative;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.abilities-tray {
+  display: flex;
+  gap: 5px;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ability-pill {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1.5px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.25, 1);
+  font-family: 'Fredoka One', cursive;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+.ability-pill:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--neon-blue);
+  transform: translateY(-1px);
+}
+.ability-pill:active:not(:disabled) { transform: scale(0.94); }
+.ability-pill:disabled { opacity: 0.25; cursor: not-allowed; pointer-events: none; }
+
+/* Launch Capsule Bar (Revealed smoothly during selection) */
+.launch-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 8px;
+  padding: 0 4px;
+}
+
+.launch-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-muted);
+}
+.launch-meta b {
+  font-family: 'Fredoka One', cursive;
+  font-size: 15px;
+  color: var(--gold);
+}
+
+.btn-launch-caps {
+  appearance: none;
+  border: none;
+  font-family: 'Fredoka One', cursive;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  padding: 8px 18px;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+  background: linear-gradient(180deg, #ff6685 0%, var(--red) 60%, #b30027 100%);
+  color: #fff;
+  box-shadow: 0 3px 0 #730019, 0 6px 14px -3px rgba(255, 51, 88, 0.5);
+}
+.btn-launch-caps:active { transform: translateY(2px); box-shadow: 0 1px 0 #730019; }
+.btn-launch-caps:disabled {
+  opacity: 0.4;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+  box-shadow: none;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ── OVERCLOCK DIAL MODAL ── */
+.overclock-dial-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 14px 0;
+}
+.dial-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  padding: 14px;
+  font-family: 'Fredoka One', cursive;
+  font-size: 26px;
+  color: var(--neon-gold);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.dial-btn:hover {
+  background: rgba(255, 184, 0, 0.15);
+  border-color: var(--neon-gold);
+  transform: scale(1.05);
+}
+
+/* ── FLOATING TOAST ── */
+.toast-bar {
+  position: absolute;
+  left: 50%;
+  bottom: 85px;
+  transform: translateX(-50%) translateY(15px);
+  background: rgba(14, 18, 32, 0.95);
+  color: #fff;
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  border: 1.5px solid var(--border);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+  pointer-events: none;
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 50;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.toast-bar.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── MODALS / OVERLAYS ── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 7, 16, 0.88);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+  animation: fadeIn 0.25s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.modal-card {
+  background: var(--card-bg);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  border-radius: 24px;
+  padding: 24px 20px;
+  width: 100%;
+  max-width: 400px;
+  max-height: 88dvh;
+  overflow-y: auto;
+  box-shadow: 0 30px 80px -20px rgba(0,0,0,0.9), inset 0 1px 0 rgba(255,255,255,0.15);
+  position: relative;
+}
+.modal-title {
+  font-family: 'Fredoka One', cursive;
+  font-size: 26px;
+  margin-bottom: 4px;
+  letter-spacing: 0.5px;
+  text-align: center;
+}
+.modal-title span { color: var(--gold); }
+.modal-sub {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  text-align: center;
+  margin-bottom: 18px;
+  line-height: 1.4;
+}
+.mode-stack { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+.mode-option {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+.mode-option:hover, .mode-option:active {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 184, 0, 0.5);
+  transform: translateY(-2px);
+}
+.mode-icon {
+  font-size: 26px;
+  width: 42px; height: 42px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  display: flex; align-items: center; justify-content: center;
+}
+.mode-text h3 { font-family: 'Fredoka One', cursive; font-size: 16px; margin-bottom: 2px; color: #fff; }
+.mode-text p { font-size: 11.5px; color: var(--text-muted); }
+
+.rules-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+.rule-row { display: flex; gap: 10px; font-size: 12.5px; line-height: 1.45; color: rgba(255,255,255,0.9); }
+.rule-badge {
+  font-family: 'Fredoka One', cursive;
+  font-size: 14px;
+  color: var(--gold);
+  width: 20px; flex: none;
+  text-align: center;
+}
+
+.modal-btns { display: flex; flex-direction: column; gap: 10px; }
+.btn-modal {
+  width: 100%;
+  appearance: none;
+  border: none;
+  font-family: 'Fredoka One', cursive;
+  font-size: 16px;
+  padding: 14px;
+  border-radius: 16px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+  text-decoration: none;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn-modal.gold {
+  background: linear-gradient(180deg, #ffe066 0%, var(--gold) 100%);
+  color: #151002;
+  box-shadow: 0 4px 15px rgba(255, 184, 0, 0.35);
+}
+.btn-modal.ghost {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.btn-modal:active { transform: scale(0.97); }
+
+.win-hero { text-align: center; padding: 6px 0 16px; }
+.win-emoji { font-size: 54px; margin-bottom: 8px; filter: drop-shadow(0 0 20px rgba(255, 184, 0, 0.5)); }
+.win-headline { font-family: 'Fredoka One', cursive; font-size: 28px; margin-bottom: 6px; }
+.win-detail { font-size: 13px; color: var(--text-muted); }
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- STREAMLINED TOP HEADER HUD -->
+  <header class="top-hub">
+    <!-- Red Score Card -->
+    <div class="scorecard-mini red active" id="cardRed">
+      <div class="cap-avatar red"><i class="fa-solid fa-shield-halved"></i></div>
+      <div class="mini-meta">
+        <span class="mini-name" id="nameRed">RED</span>
+        <span class="mini-val"><span id="countRed">8</span> <small style="font-size:9px;color:var(--text-muted);">CAPS</small></span>
+        <div class="series-dots" id="dotsRed"></div>
+      </div>
+    </div>
+
+    <!-- Center Match & Turn Hub -->
+    <div class="hub-center">
+      <div class="brand-title">CROSS<span>CAPS</span></div>
+      <div class="turn-pill" id="turnPill">
+        <i class="fa-solid fa-hourglass-half"></i> Turn 1/16
+      </div>
+    </div>
+
+    <!-- Gold Score Card -->
+    <div class="scorecard-mini gold" id="cardGold">
+      <div class="mini-meta" style="text-align:right;">
+        <span class="mini-name" id="nameGold">GOLD</span>
+        <span class="mini-val"><span id="countGold">8</span> <small style="font-size:9px;color:var(--text-muted);">CAPS</small></span>
+        <div class="series-dots" id="dotsGold" style="justify-content:flex-end;"></div>
+      </div>
+      <div class="cap-avatar gold"><i class="fa-solid fa-crown"></i></div>
+    </div>
+
+    <!-- Top Action Icons -->
+    <div class="hub-actions">
+      <button class="btn-icon" id="btnHelp" title="Rules"><i class="fa-solid fa-question"></i></button>
+      <button class="btn-icon" id="btnSound" title="Sound"><i class="fa-solid fa-volume-high"></i></button>
+      <a href="index.html" class="btn-icon" title="Arcade Hub"><i class="fa-solid fa-house"></i></a>
+    </div>
+  </header>
+
+  <!-- EXPANSIVE STADIUM BOARD CANVAS -->
+  <div class="board-container">
+    <canvas id="board"></canvas>
+  </div>
+
+  <!-- STATUS PILL & UNIFIED BOTTOM DOCK -->
+  <div class="bottom-dock">
+    <div class="status-pill" id="statusPill">Tap the <b>center die 🎲</b> to roll!</div>
+    
+    <div class="dock-deck">
+      <!-- 1. Tactical Abilities Tray (Shown in Idle) -->
+      <div class="abilities-tray" id="abilitiesDeck">
+        <button class="ability-pill" id="btnOverclock" title="Pick exact die roll">
+          🎲 OVERCLOCK
+        </button>
+        <button class="ability-pill" id="btnVaporize" title="Vaporize 1 own cap immediately">
+          💥 VAPORIZE
+        </button>
+        <button class="ability-pill" id="btnShaker" title="Free dice reroll">
+          🎰 SHAKER
+        </button>
+      </div>
+
+      <!-- 2. Integrated Launch Bar (Smoothly Swapped in Selection) -->
+      <div class="launch-bar hidden" id="launchBar">
+        <div class="launch-meta">
+          🎯 Selected: <b id="selCount">0</b> / <b id="needCount">0</b>
+        </div>
+        <button class="btn-launch-caps" id="btnConfirm" disabled>
+          LAUNCH CAPS ⚡
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST ALERTS -->
+  <div class="toast-bar" id="toastBar">
+    <span id="toastIcon">✨</span> <span id="toastText">Welcome to CrossCaps!</span>
+  </div>
+
+  <!-- OVERCLOCK DIAL MODAL -->
+  <div class="overlay hidden" id="overclockOverlay">
+    <div class="modal-card">
+      <div class="modal-title">🎲 <span>OVERCLOCK</span> DIAL</div>
+      <p class="modal-sub">Choose your exact roll number for this turn!</p>
+      
+      <div class="overclock-dial-grid">
+        <button class="dial-btn" data-val="1">1</button>
+        <button class="dial-btn" data-val="2">2</button>
+        <button class="dial-btn" data-val="3">3</button>
+        <button class="dial-btn" data-val="4">4</button>
+        <button class="dial-btn" data-val="5">5</button>
+        <button class="dial-btn" data-val="6">6</button>
+      </div>
+
+      <button class="btn-modal ghost" id="btnCancelOverclock">Cancel</button>
+    </div>
+  </div>
+
+  <!-- START OVERLAY -->
+  <div class="overlay" id="startOverlay">
+    <div class="modal-card">
+      <div class="modal-title">CROSS<span>CAPS</span></div>
+      <p class="modal-sub">Tap the center die to roll! Clear all your caps across the laser divide to triumph!</p>
+      
+      <div class="mode-stack">
+        <div class="mode-option" id="optAi">
+          <div class="mode-icon" style="color:var(--neon-blue);"><i class="fa-solid fa-robot"></i></div>
+          <div class="mode-text">
+            <h3>Vs. Tactical Computer AI</h3>
+            <p>Smart AI that counters your sabotage and uses tactical abilities.</p>
+          </div>
+        </div>
+        <div class="mode-option" id="optPvp">
+          <div class="mode-icon" style="color:var(--gold);"><i class="fa-solid fa-user-group"></i></div>
+          <div class="mode-text">
+            <h3>Pass & Play (2 Players)</h3>
+            <p>High-stakes arena duel with strategic abilities on 1 screen.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-btns">
+        <button class="btn-modal ghost" id="btnShowRulesFromStart">
+          <i class="fa-solid fa-book-open"></i> How to Play & Tactics
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RULES OVERLAY -->
+  <div class="overlay hidden" id="rulesOverlay">
+    <div class="modal-card">
+      <div class="modal-title">TACTICS &amp; <span>RULES</span></div>
+      <p class="modal-sub">Mastering the Strategic Arena</p>
+      
+      <div class="rules-list">
+        <div class="rule-row">
+          <span class="rule-badge">1</span>
+          <div><b>Interactive Die:</b> Tap the <b>center 3D die 🎲</b> on the laser line to roll!</div>
+        </div>
+        <div class="rule-row">
+          <span class="rule-badge">2</span>
+          <div><b>Launching Caps:</b> Tap the caps in your zone, then tap <b>LAUNCH CAPS ⚡</b> or tap the glowing center die!</div>
+        </div>
+        <div class="rule-row">
+          <span class="rule-badge">3</span>
+          <div><b>Tactical Abilities (1 use each per round):</b>
+            <br>• <b>🎲 Overclock:</b> Choose your exact roll!
+            <br>• <b>💥 Vaporize:</b> Directly eliminate 1 of your own caps!
+            <br>• <b>🎰 Shaker:</b> Reroll if you get an unfavorable number.
+          </div>
+        </div>
+        <div class="rule-row">
+          <span class="rule-badge">4</span>
+          <div><b>Special Caps:</b>
+            <br>• 💣 <b>Blast Cap:</b> Explodes on impact and vaporizes 1 enemy cap!
+            <br>• ⚡ <b>Turbo Cap:</b> Awards an immediate bonus turn!
+            <br>• 🌟 <b>Wild Cap:</b> Triggers bonus sabotage!
+          </div>
+        </div>
+        <div class="rule-row">
+          <span class="rule-badge">5</span>
+          <div><b>🔥 Overdrive Surge (Turn 8+):</b> Pushed caps have a 50% chance of permanent meltdown/vaporization instead of bouncing forever!</div>
+        </div>
+        <div class="rule-row">
+          <span class="rule-badge">6</span>
+          <div><b>⏱️ Sudden Death (Turn 16):</b> If neither player clears by Turn 16, the player with the fewest own caps in their arena wins by judgment!</div>
+        </div>
+      </div>
+
+      <button class="btn-modal gold" id="btnCloseRules">LET'S PLAY!</button>
+    </div>
+  </div>
+
+  <!-- ROUND WIN OVERLAY -->
+  <div class="overlay hidden" id="roundWinOverlay">
+    <div class="modal-card">
+      <div class="win-hero">
+        <div class="win-emoji" id="winEmoji">🏆</div>
+        <div class="win-headline" id="winHeadline">RED WINS!</div>
+        <p class="win-detail" id="winDetail">Cleared their entire arena.</p>
+      </div>
+      <div class="modal-btns">
+        <button class="btn-modal gold" id="btnNextRound">
+          NEXT ROUND <i class="fa-solid fa-forward"></i>
+        </button>
+        <button class="btn-modal ghost" id="btnRestartMatch">
+          Reset Match
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MATCH CHAMPION OVERLAY -->
+  <div class="overlay hidden" id="matchWinOverlay">
+    <div class="modal-card">
+      <div class="win-hero">
+        <div class="win-emoji">👑</div>
+        <div class="win-headline" id="matchHeadline">CHAMPION!</div>
+        <p class="win-detail" id="matchDetail">Dominated the Best of 3 Tournament!</p>
+      </div>
+      <div class="modal-btns">
+        <button class="btn-modal gold" id="btnPlayAgain">
+          <i class="fa-solid fa-rotate-right"></i> Play New Match
+        </button>
+        <a href="index.html" class="btn-modal ghost">
+          <i class="fa-solid fa-flag-checkered"></i> Back to Arcade Hub
+        </a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ─────────────── SOUND SYNTHESIS ─────────────── */
+  const SFX = {
+    muted: false,
+    ctx: null,
+    init() {
+      if (!this.ctx) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) this.ctx = new AudioCtx();
+      }
+    },
+    play(type) {
+      if (this.muted) return;
+      this.init();
+      if (!this.ctx) return;
+      try {
+        const c = this.ctx;
+        if (c.state === 'suspended') c.resume();
+        const now = c.currentTime;
+
+        if (type === 'roll') {
+          const osc = c.createOscillator();
+          const gain = c.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(160, now);
+          osc.frequency.exponentialRampToValueAtTime(420, now + 0.1);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+          osc.connect(gain); gain.connect(c.destination);
+          osc.start(now); osc.stop(now + 0.15);
+        } else if (type === 'select') {
+          const osc = c.createOscillator();
+          const gain = c.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(540, now);
+          osc.frequency.exponentialRampToValueAtTime(780, now + 0.08);
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+          osc.connect(gain); gain.connect(c.destination);
+          osc.start(now); osc.stop(now + 0.08);
+        } else if (type === 'push') {
+          const osc = c.createOscillator();
+          const gain = c.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(260, now);
+          osc.frequency.exponentialRampToValueAtTime(680, now + 0.22);
+          gain.gain.setValueAtTime(0.22, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+          osc.connect(gain); gain.connect(c.destination);
+          osc.start(now); osc.stop(now + 0.25);
+        } else if (type === 'land') {
+          const osc = c.createOscillator();
+          const gain = c.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(880, now);
+          gain.gain.setValueAtTime(0.18, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+          osc.connect(gain); gain.connect(c.destination);
+          osc.start(now); osc.stop(now + 0.12);
+        } else if (type === 'blast') {
+          const osc = c.createOscillator();
+          const gain = c.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(450, now);
+          osc.frequency.exponentialRampToValueAtTime(80, now + 0.35);
+          gain.gain.setValueAtTime(0.25, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+          osc.connect(gain); gain.connect(c.destination);
+          osc.start(now); osc.stop(now + 0.35);
+        } else if (type === 'skip') {
+          const osc = c.createOscillator();
+          const gain = c.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(220, now);
+          osc.frequency.linearRampToValueAtTime(80, now + 0.25);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+          osc.connect(gain); gain.connect(c.destination);
+          osc.start(now); osc.stop(now + 0.25);
+        } else if (type === 'win') {
+          [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+            const osc = c.createOscillator();
+            const gain = c.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+            gain.gain.setValueAtTime(0.2, now + idx * 0.08);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.3);
+            osc.connect(gain); gain.connect(c.destination);
+            osc.start(now + idx * 0.08); osc.stop(now + idx * 0.08 + 0.3);
+          });
+        }
+      } catch (e) {}
+    }
+  };
+
+  /* ─────────────── GAME CONSTANTS & STATE ─────────────── */
+  const MATCH_TARGET = 2; // Best of 3
+  const MAX_TURNS_PER_ROUND = 16;
+  const HEAT_START_TURN = 8;
+
+  let gameMode = 'ai'; // 'ai' | 'pvp'
+  let seriesScore = { red: 0, gold: 0 };
+  let roundNumber = 1;
+  let turnNumber = 1;
+
+  let zones = { red: [], gold: [] };
+  let pieceVisuals = {};
+  let flyingPieces = [];
+  let particles = [];
+  let pieceSeq = 0;
+
+  let currentPlayer = 'red'; // 'red' | 'gold'
+  let gameState = 'idle'; // 'idle' | 'rolling' | 'selecting' | 'animating' | 'roundOver' | 'matchOver'
+  let rollValue = 0;
+  let selectedPieces = new Set();
+
+  let playerAbilities = {
+    red: { overclock: true, vaporize: true, shaker: true },
+    gold: { overclock: true, vaporize: true, shaker: true }
+  };
+
+  let diceAnim = { rolling: false, currentFace: 1, angle: 0 };
+
+  /* ─────────────── CANVAS GEOMETRY & RESIZING ─────────────── */
+  const canvas = document.getElementById('board');
+  const ctx = canvas.getContext('2d');
+  let W = 0, H = 0, DPR = 1, boardGeo = null;
+
+  function resizeBoard() {
+    const wrap = canvas.parentElement;
+    const rect = wrap.getBoundingClientRect();
+    DPR = Math.min(window.devicePixelRatio || 1, 2.5);
+    W = rect.width; H = rect.height;
+    canvas.width = W * DPR; canvas.height = H * DPR;
+    canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+    const pad = 8;
+    const arenaW = W - pad * 2;
+    const arenaH = H - pad * 2;
+    const divideGap = 36;
+    const fieldH = (arenaH - divideGap) / 2;
+
+    boardGeo = {
+      pad,
+      arenaX: pad,
+      arenaY: pad,
+      arenaW,
+      arenaH,
+      fieldH,
+      goldZone: {
+        x: pad + 8,
+        y: pad + 8,
+        w: arenaW - 16,
+        h: fieldH - 8
+      },
+      centerDivideY: pad + fieldH + divideGap / 2,
+      redZone: {
+        x: pad + 8,
+        y: pad + fieldH + divideGap,
+        w: arenaW - 16,
+        h: fieldH - 8
+      },
+      capRadius: Math.max(13.5, Math.min(arenaW / 9.5, fieldH / 5.2))
+    };
+    layoutPieces(true);
+  }
+  window.addEventListener('resize', resizeBoard);
+
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function easeOutQuad(t) { return t * (2 - t); }
+
+  /* ─────────────── SPACIOUS GRID SLOTS WITH HIGH CLEARANCE ─────────────── */
+  function computeSlotPositions(side, count) {
+    if (count <= 0 || !boardGeo) return [];
+    const zone = side === 'red' ? boardGeo.redZone : boardGeo.goldZone;
+    const slots = [];
+
+    const cols = count > 12 ? 5 : 4;
+    const rows = Math.max(2, Math.ceil(count / cols));
+
+    const paddingX = zone.w * 0.05;
+    const paddingY = zone.h * 0.08;
+    const availW = zone.w - paddingX * 2;
+    const availH = zone.h - paddingY * 2;
+
+    const cellW = availW / cols;
+    const cellH = availH / rows;
+
+    for (let idx = 0; idx < count; idx++) {
+      const col = idx % cols;
+      const row = Math.floor(idx / cols);
+
+      const cx = zone.x + paddingX + (col + 0.5) * cellW;
+      const cy = zone.y + paddingY + (row + 0.5) * cellH;
+      slots.push({ x: cx, y: cy });
+    }
+    return slots;
+  }
+
+  function layoutPieces(snap = false) {
+    if (!boardGeo) return;
+    ['red', 'gold'].forEach(side => {
+      const slots = computeSlotPositions(side, zones[side].length);
+      zones[side].forEach((p, idx) => {
+        const target = slots[idx] || { x: W / 2, y: H / 2 };
+        if (!pieceVisuals[p.id]) pieceVisuals[p.id] = { x: target.x, y: target.y, tx: target.x, ty: target.y };
+        pieceVisuals[p.id].tx = target.x;
+        pieceVisuals[p.id].ty = target.y;
+        if (snap) { pieceVisuals[p.id].x = target.x; pieceVisuals[p.id].y = target.y; }
+      });
+    });
+  }
+
+  /* ─────────────── PARTICLES ─────────────── */
+  function spawnDust(x, y, color) {
+    for (let i = 0; i < 16; i++) {
+      const ang = (Math.PI * 2 * i) / 16 + (Math.random() - 0.5) * 0.4;
+      const spd = 2 + Math.random() * 4;
+      particles.push({
+        x, y,
+        vx: Math.cos(ang) * spd,
+        vy: Math.sin(ang) * spd - 1.5,
+        r: 2.5 + Math.random() * 3.5,
+        alpha: 1,
+        decay: 0.035 + Math.random() * 0.035,
+        color: color === 'red' ? '#ff3358' : color === 'gold' ? '#ffb800' : color === 'blast' ? '#ff7700' : '#00d2ff'
+      });
+    }
+  }
+
+  function updateAndDrawParticles() {
+    particles = particles.filter(p => p.alpha > 0);
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      p.vy += 0.15;
+      p.alpha -= p.decay;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, p.alpha);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.shadowColor = p.color;
+      ctx.shadowBlur = 8;
+      ctx.fill();
+      ctx.restore();
+    });
+  }
+
+  /* ─────────────── STADIUM ARENA RENDERING ─────────────── */
+  function renderBoard() {
+    if (!boardGeo) return;
+    ctx.clearRect(0, 0, W, H);
+    const g = boardGeo;
+    const isHeatSurge = turnNumber >= HEAT_START_TURN;
+
+    // 1. STADIUM ARENA OUTER CASING
+    ctx.save();
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+    ctx.shadowBlur = 28;
+    ctx.shadowOffsetY = 12;
+
+    const stadiumGrad = ctx.createLinearGradient(0, g.arenaY, 0, g.arenaY + g.arenaH);
+    stadiumGrad.addColorStop(0, '#0f1326');
+    stadiumGrad.addColorStop(0.5, '#080a14');
+    stadiumGrad.addColorStop(1, '#0e1224');
+
+    ctx.beginPath();
+    ctx.roundRect(g.arenaX, g.arenaY, g.arenaW, g.arenaH, 20);
+    ctx.fillStyle = stadiumGrad;
+    ctx.fill();
+    ctx.restore();
+
+    // 2. OUTER NEON BORDER
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(g.arenaX, g.arenaY, g.arenaW, g.arenaH, 20);
+    ctx.strokeStyle = isHeatSurge ? 'rgba(255, 119, 0, 0.5)' : 'rgba(255, 255, 255, 0.14)';
+    ctx.lineWidth = isHeatSurge ? 2.5 : 1.5;
+    ctx.stroke();
+    ctx.restore();
+
+    // 3. GOLD FIELD (TOP ARENA)
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(g.goldZone.x, g.goldZone.y, g.goldZone.w, g.goldZone.h, 14);
+    const isGoldActive = gameState === 'selecting' && currentPlayer === 'gold' && !isAiTurn();
+    ctx.fillStyle = isGoldActive ? 'rgba(255, 184, 0, 0.12)' : 'rgba(255, 184, 0, 0.04)';
+    ctx.fill();
+    ctx.strokeStyle = isGoldActive ? 'rgba(255, 184, 0, 0.6)' : 'rgba(255, 184, 0, 0.2)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Gold Zone Header
+    ctx.font = "900 11px 'Outfit', sans-serif";
+    ctx.letterSpacing = '1.5px';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255, 184, 0, 0.85)';
+    ctx.shadowColor = 'rgba(255, 184, 0, 0.6)'; ctx.shadowBlur = 10;
+    ctx.fillText('GOLD TERRITORY', g.goldZone.x + g.goldZone.w / 2, g.goldZone.y + 16);
+
+    // Draw Subtle Slot Rings for Gold Arena
+    const goldSlots = computeSlotPositions('gold', zones.gold.length);
+    goldSlots.forEach(s => {
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, g.capRadius * 1.15, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255, 184, 0, 0.1)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    });
+    ctx.restore();
+
+    // 4. RED FIELD (BOTTOM ARENA)
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(g.redZone.x, g.redZone.y, g.redZone.w, g.redZone.h, 14);
+    const isRedActive = gameState === 'selecting' && currentPlayer === 'red' && !isAiTurn();
+    ctx.fillStyle = isRedActive ? 'rgba(255, 51, 88, 0.12)' : 'rgba(255, 51, 88, 0.04)';
+    ctx.fill();
+    ctx.strokeStyle = isRedActive ? 'rgba(255, 51, 88, 0.6)' : 'rgba(255, 51, 88, 0.2)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Red Zone Header
+    ctx.font = "900 11px 'Outfit', sans-serif";
+    ctx.letterSpacing = '1.5px';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255, 51, 88, 0.85)';
+    ctx.shadowColor = 'rgba(255, 51, 88, 0.6)'; ctx.shadowBlur = 10;
+    ctx.fillText('RED TERRITORY', g.redZone.x + g.redZone.w / 2, g.redZone.y + g.redZone.h - 8);
+
+    // Draw Subtle Slot Rings for Red Arena
+    const redSlots = computeSlotPositions('red', zones.red.length);
+    redSlots.forEach(s => {
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, g.capRadius * 1.15, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255, 51, 88, 0.1)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    });
+    ctx.restore();
+
+    // 5. CENTER DIVIDE LASER BARRIER (Glowing Neon Divide with Wide Clearance)
+    ctx.save();
+    const divideY = g.centerDivideY;
+    const isReadyToPush = gameState === 'selecting' && selectedPieces.size === rollValue;
+
+    ctx.strokeStyle = isReadyToPush ? 'rgba(0, 255, 163, 0.9)' : (isHeatSurge ? 'rgba(255, 119, 0, 0.9)' : 'rgba(0, 210, 255, 0.8)');
+    ctx.shadowColor = isReadyToPush ? '#00ffa3' : (isHeatSurge ? '#ff7700' : '#00d2ff');
+    ctx.shadowBlur = isReadyToPush ? 22 : (isHeatSurge ? 18 : 12);
+    ctx.lineWidth = isReadyToPush ? 3.5 : 2.5;
+    ctx.setLineDash(isReadyToPush ? [6, 4] : [12, 6]);
+    ctx.beginPath();
+    ctx.moveTo(g.arenaX + 20, divideY);
+    ctx.lineTo(g.arenaX + g.arenaW - 20, divideY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Laser Emitter Nodes
+    ctx.fillStyle = isReadyToPush ? '#00ffa3' : (isHeatSurge ? '#ff7700' : '#00d2ff');
+    ctx.beginPath(); ctx.arc(g.arenaX + 20, divideY, 4.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(g.arenaX + g.arenaW - 20, divideY, 4.5, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+
+    // 6. Stationary Caps
+    const flyingSet = new Set(flyingPieces.map(f => f.id));
+    [...zones.red, ...zones.gold].forEach(p => {
+      if (!flyingSet.has(p.id)) drawCapToken(p.id, p.color, p.type || 'normal');
+    });
+
+    // 7. In-Flight Caps
+    flyingPieces.forEach(f => {
+      drawCapTokenAt(f.x, f.y, f.color, f.type || 'normal', f.progress, f.scale || 1, false);
+    });
+
+    // 8. Centered 3D Die Token (Interactive & Tappable)
+    const dieX = g.arenaX + g.arenaW / 2;
+    const dieY = g.centerDivideY;
+    const dieSz = Math.max(34, g.arenaW * 0.115);
+    drawDieToken(dieX, dieY, dieSz);
+
+    // 9. Particles
+    updateAndDrawParticles();
+  }
+
+  function drawCapToken(id, color, type) {
+    const v = pieceVisuals[id];
+    if (!v) return;
+    v.x = lerp(v.x, v.tx, 0.22);
+    v.y = lerp(v.y, v.ty, 0.22);
+    drawCapTokenAt(v.x, v.y, color, type, -1, 1, selectedPieces.has(id));
+  }
+
+  function drawCapTokenAt(x, y, color, type, progress, scale, isSelected) {
+    const r = boardGeo.capRadius * scale;
+    const isFlight = progress >= 0;
+    const flightArc = isFlight ? Math.sin(Math.max(0, Math.min(1, progress)) * Math.PI) : 0;
+    const curR = r * (1 + flightArc * 0.38);
+    const elevY = isSelected ? -8 : 0;
+
+    ctx.save();
+    // Drop Shadow
+    ctx.beginPath();
+    ctx.ellipse(x, y + curR * 0.58 + flightArc * 14, curR * 0.85, curR * 0.3, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+    ctx.fill();
+
+    // Selection Glow Aura
+    if (isSelected || isFlight || type === 'blast' || type === 'turbo') {
+      ctx.beginPath();
+      ctx.arc(x, y + elevY, curR * 1.32, 0, Math.PI * 2);
+      ctx.fillStyle = type === 'blast' ? 'rgba(255, 119, 0, 0.35)' : type === 'turbo' ? 'rgba(0, 255, 163, 0.35)' : color === 'red' ? 'rgba(255, 51, 88, 0.28)' : 'rgba(255, 184, 0, 0.28)';
+      ctx.fill();
+    }
+
+    // Metallic Crimped Crown Edge
+    const crownGrad = ctx.createRadialGradient(x - curR * 0.3, y + elevY - curR * 0.3, curR * 0.1, x, y + elevY, curR);
+    if (type === 'blast') {
+      crownGrad.addColorStop(0, '#ffbb66');
+      crownGrad.addColorStop(0.55, '#ff7700');
+      crownGrad.addColorStop(1, '#993300');
+    } else if (type === 'turbo') {
+      crownGrad.addColorStop(0, '#88ffcc');
+      crownGrad.addColorStop(0.55, '#00ffa3');
+      crownGrad.addColorStop(1, '#006644');
+    } else if (color === 'wild') {
+      crownGrad.addColorStop(0, '#ffffff');
+      crownGrad.addColorStop(0.5, '#00d2ff');
+      crownGrad.addColorStop(1, '#005588');
+    } else if (color === 'red') {
+      crownGrad.addColorStop(0, '#ff99aa');
+      crownGrad.addColorStop(0.55, '#ff3358');
+      crownGrad.addColorStop(1, '#990022');
+    } else {
+      crownGrad.addColorStop(0, '#fff499');
+      crownGrad.addColorStop(0.55, '#ffb800');
+      crownGrad.addColorStop(1, '#996e00');
+    }
+
+    ctx.beginPath();
+    ctx.arc(x, y + elevY, curR, 0, Math.PI * 2);
+    ctx.fillStyle = crownGrad;
+    ctx.shadowColor = type === 'blast' ? '#ff7700' : type === 'turbo' ? '#00ffa3' : color === 'red' ? '#ff3358' : '#ffb800';
+    ctx.shadowBlur = isSelected ? 18 : 8;
+    ctx.fill();
+
+    // Crimp Ring Groove
+    ctx.beginPath();
+    ctx.arc(x, y + elevY, curR * 0.82, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.lineWidth = curR * 0.16;
+    ctx.stroke();
+
+    // Emblem Center Disc
+    ctx.beginPath();
+    ctx.arc(x, y + elevY, curR * 0.58, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+    ctx.fill();
+
+    // Special Emblem / Icon
+    if (type === 'blast') {
+      ctx.fillStyle = '#fff';
+      ctx.font = "900 " + Math.round(curR * 0.65) + "px sans-serif";
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('💣', x, y + elevY + 1);
+    } else if (type === 'turbo') {
+      ctx.fillStyle = '#fff';
+      ctx.font = "900 " + Math.round(curR * 0.65) + "px sans-serif";
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('⚡', x, y + elevY + 1);
+    } else if (color === 'wild') {
+      drawCapStar(x, y + elevY, curR * 0.32, '#ffffff');
+    } else if (color === 'red') {
+      drawCapStar(x, y + elevY, curR * 0.28, 'rgba(255,255,255,0.9)');
+    } else {
+      ctx.beginPath();
+      ctx.arc(x, y + elevY, curR * 0.22, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.fill();
+    }
+
+    // Gloss Specular Highlight
+    ctx.beginPath();
+    ctx.ellipse(x - curR * 0.3, y + elevY - curR * 0.35, curR * 0.34, curR * 0.16, -0.6, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.fill();
+
+    // Selected Dashed Pulse Ring
+    if (isSelected) {
+      ctx.beginPath();
+      ctx.arc(x, y + elevY, curR * 1.18, 0, Math.PI * 2);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([4, 3]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    ctx.restore();
+  }
+
+  function drawCapStar(cx, cy, r, fill) {
+    ctx.save();
+    ctx.beginPath();
+    for (let i = 0; i < 5; i++) {
+      const a1 = -Math.PI / 2 + i * (Math.PI * 2 / 5);
+      const a2 = a1 + Math.PI / 5;
+      const x1 = cx + Math.cos(a1) * r, y1 = cy + Math.sin(a1) * r;
+      const x2 = cx + Math.cos(a2) * (r * 0.45), y2 = cy + Math.sin(a2) * (r * 0.45);
+      if (i === 0) ctx.moveTo(x1, y1); else ctx.lineTo(x1, y1);
+      ctx.lineTo(x2, y2);
+    }
+    ctx.closePath();
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawDieToken(cx, cy, size) {
+    const isSpinning = diceAnim.rolling;
+    const isReadyToRoll = gameState === 'idle' && !isAiTurn();
+    const isReadyToPush = gameState === 'selecting' && selectedPieces.size === rollValue && !isAiTurn();
+
+    const wobbleY = isSpinning ? Math.sin(Date.now() / 45) * 5 : ((isReadyToRoll || isReadyToPush) ? Math.sin(Date.now() / 180) * 3 : 0);
+    const wobbleRot = isSpinning ? Math.sin(Date.now() / 35) * 0.2 : 0;
+
+    ctx.save();
+    ctx.translate(cx, cy + wobbleY);
+    ctx.rotate(wobbleRot);
+    const half = size * 0.5;
+
+    // Glowing Tappable Pulse Ring when Ready to Roll or Ready to Push
+    if (isReadyToPush) {
+      const pulseSize = half * 1.5 + Math.sin(Date.now() / 120) * 5;
+      ctx.beginPath();
+      ctx.arc(0, 0, pulseSize, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(0, 255, 163, 0.85)';
+      ctx.shadowColor = '#00ffa3';
+      ctx.shadowBlur = 16;
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      ctx.font = "900 9.5px 'Fredoka One', cursive";
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#00ffa3';
+      ctx.shadowColor = 'rgba(0,0,0,0.9)';
+      ctx.shadowBlur = 5;
+      ctx.fillText('TAP TO LAUNCH ⚡', 0, -half - 7);
+    } else if (isReadyToRoll) {
+      const pulseSize = half * 1.45 + Math.sin(Date.now() / 150) * 4;
+      ctx.beginPath();
+      ctx.arc(0, 0, pulseSize, 0, Math.PI * 2);
+      ctx.strokeStyle = currentPlayer === 'red' ? 'rgba(255, 51, 88, 0.75)' : 'rgba(255, 184, 0, 0.75)';
+      ctx.shadowColor = currentPlayer === 'red' ? '#ff3358' : '#ffb800';
+      ctx.shadowBlur = 12;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.font = "900 9px 'Fredoka One', cursive";
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = 'rgba(0,0,0,0.8)';
+      ctx.shadowBlur = 4;
+      ctx.fillText('TAP TO ROLL', 0, -half - 6);
+    } else {
+      ctx.beginPath();
+      ctx.arc(0, 0, half * 1.35, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(0, 210, 255, 0.35)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // Die Body Shadow
+    ctx.beginPath();
+    ctx.ellipse(0, half * 0.72, half * 0.6, half * 0.18, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fill();
+
+    // Body
+    const bodyGrad = ctx.createLinearGradient(-half, -half, half, half);
+    bodyGrad.addColorStop(0, '#ffffff');
+    bodyGrad.addColorStop(1, '#d8deea');
+
+    ctx.beginPath();
+    ctx.roundRect(-half, -half, size, size, size * 0.22);
+    ctx.fillStyle = bodyGrad;
+    ctx.shadowColor = rollValue > 0 && !isSpinning ? (isReadyToPush ? '#00ffa3' : (currentPlayer === 'red' ? '#ff3358' : '#ffb800')) : 'rgba(0, 210, 255, 0.5)';
+    ctx.shadowBlur = isReadyToPush ? 26 : 22;
+    ctx.fill();
+
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth = 1.5;
+    ctx.shadowBlur = 0;
+    ctx.stroke();
+
+    // Pips
+    const face = isSpinning ? diceAnim.currentFace : (rollValue || diceAnim.currentFace);
+    drawDiePips(face, half);
+    ctx.restore();
+  }
+
+  function drawDiePips(val, half) {
+    const P = {
+      c: [0, 0], tl: [-0.28, -0.28], tr: [0.28, -0.28],
+      bl: [-0.28, 0.28], br: [0.28, 0.28], ml: [-0.28, 0], mr: [0.28, 0]
+    };
+    const PIPS_MAP = {
+      1: [P.c], 2: [P.tl, P.br], 3: [P.tl, P.c, P.br],
+      4: [P.tl, P.tr, P.bl, P.br], 5: [P.tl, P.tr, P.c, P.bl, P.br],
+      6: [P.tl, P.tr, P.ml, P.mr, P.bl, P.br]
+    };
+    ctx.fillStyle = '#0f1322';
+    (PIPS_MAP[val] || PIPS_MAP[1]).forEach(([px, py]) => {
+      ctx.beginPath();
+      ctx.arc(px * half * 2, py * half * 2, half * 0.18, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+
+  /* ─────────────── ANIMATION LOOP ─────────────── */
+  function gameLoop() {
+    renderBoard();
+
+    // Update in-flight pieces
+    if (flyingPieces.length) {
+      flyingPieces.forEach(f => {
+        f.progress += 0.042;
+        const t = Math.max(0, Math.min(1, f.progress));
+        f.x = lerp(f.sx, f.ex, easeOutQuad(t));
+        f.y = lerp(f.sy, f.ey, easeOutQuad(t)) - Math.sin(t * Math.PI) * 45;
+      });
+      if (flyingPieces.every(f => f.progress >= 1)) {
+        finishPieceFlight();
+      }
+    }
+
+    if (diceAnim.rolling) {
+      diceAnim.currentFace = 1 + Math.floor(Math.random() * 6);
+    }
+    requestAnimationFrame(gameLoop);
+  }
+
+  /* ─────────────── TOUCH & CLICK INTERACTIONS ─────────────── */
+  function isAiTurn() { return gameMode === 'ai' && currentPlayer === 'gold'; }
+
+  canvas.addEventListener('pointerdown', e => {
+    if (isAiTurn()) return;
+    const rect = canvas.getBoundingClientRect();
+    const touchX = e.clientX - rect.left;
+    const touchY = e.clientY - rect.top;
+
+    if (!boardGeo) return;
+
+    // 1. Check if user tapped Center 3D Die to roll or launch!
+    const dieX = boardGeo.arenaX + boardGeo.arenaW / 2;
+    const dieY = boardGeo.centerDivideY;
+    const dieDist = Math.hypot(touchX - dieX, touchY - dieY);
+
+    if (gameState === 'idle') {
+      if (dieDist < boardGeo.capRadius * 2.8 || Math.abs(touchY - dieY) < 32) {
+        executeDiceRoll();
+        return;
+      }
+    }
+
+    // 2. Piece selection when in 'selecting' phase
+    if (gameState === 'selecting') {
+      // If tapping center die while exact count is chosen, launch push!
+      if (selectedPieces.size === rollValue && (dieDist < boardGeo.capRadius * 2.8 || Math.abs(touchY - dieY) < 32)) {
+        executePushAction();
+        return;
+      }
+
+      let nearest = null, nearestDist = Infinity;
+      zones[currentPlayer].forEach(p => {
+        const v = pieceVisuals[p.id];
+        if (!v) return;
+        const d = Math.hypot(v.x - touchX, v.y - touchY);
+        if (d < nearestDist) { nearestDist = d; nearest = p; }
+      });
+
+      if (nearest && nearestDist < boardGeo.capRadius * 1.8) {
+        toggleSelectPiece(nearest.id);
+      }
+    }
+  });
+
+  function toggleSelectPiece(id) {
+    if (selectedPieces.has(id)) {
+      selectedPieces.delete(id);
+    } else {
+      if (selectedPieces.size >= rollValue) return;
+      selectedPieces.add(id);
+    }
+    SFX.play('select');
+    updateSelectionUI();
+  }
+
+  function updateSelectionUI() {
+    document.getElementById('selCount').textContent = selectedPieces.size;
+    document.getElementById('needCount').textContent = rollValue;
+    const confirmBtn = document.getElementById('btnConfirm');
+    const isReady = selectedPieces.size === rollValue;
+    confirmBtn.disabled = !isReady;
+    confirmBtn.innerHTML = isReady ? 'LAUNCH CAPS ⚡' : 'PICK ' + (rollValue - selectedPieces.size) + ' MORE';
+  }
+
+  /* ─────────────── GAME FLOW & ROUND MANAGEMENT ─────────────── */
+  function getPlayerName(playerKey) {
+    if (playerKey === 'red') return gameMode === 'ai' ? 'YOU (RED)' : 'PLAYER 1 (RED)';
+    return gameMode === 'ai' ? 'CPU (GOLD)' : 'PLAYER 2 (GOLD)';
+  }
+
+  function showToast(icon, text) {
+    const bar = document.getElementById('toastBar');
+    document.getElementById('toastIcon').textContent = icon;
+    document.getElementById('toastText').textContent = text;
+    bar.classList.add('show');
+    clearTimeout(showToast._timer);
+    showToast._timer = setTimeout(() => bar.classList.remove('show'), 2200);
+  }
+
+  function setStatus(html) {
+    document.getElementById('statusPill').innerHTML = html;
+  }
+
+  function updateHUD() {
+    const redCaps = zones.red.filter(p => p.color === 'red').length;
+    const goldCaps = zones.gold.filter(p => p.color === 'gold').length;
+    document.getElementById('countRed').textContent = redCaps;
+    document.getElementById('countGold').textContent = goldCaps;
+
+    document.getElementById('cardRed').classList.toggle('active', currentPlayer === 'red' && gameState !== 'roundOver');
+    document.getElementById('cardGold').classList.toggle('active', currentPlayer === 'gold' && gameState !== 'roundOver');
+
+    // Turn & Overdrive tracker
+    const turnPill = document.getElementById('turnPill');
+    if (turnPill) {
+      if (turnNumber >= HEAT_START_TURN) {
+        turnPill.className = 'turn-pill surge';
+        turnPill.innerHTML = '<i class="fa-solid fa-fire"></i> Turn ' + turnNumber + '/16 (SURGE)';
+      } else {
+        turnPill.className = 'turn-pill';
+        turnPill.innerHTML = '<i class="fa-solid fa-hourglass-half"></i> Turn ' + turnNumber + '/16';
+      }
+    }
+
+    // Ability Deck Status
+    const curAbilities = playerAbilities[currentPlayer];
+    const btnOverclock = document.getElementById('btnOverclock');
+    const btnVaporize = document.getElementById('btnVaporize');
+    const btnShaker = document.getElementById('btnShaker');
+
+    btnOverclock.disabled = !curAbilities.overclock || isAiTurn() || gameState !== 'idle';
+    btnVaporize.disabled = !curAbilities.vaporize || isAiTurn() || gameState !== 'idle';
+    btnShaker.disabled = !curAbilities.shaker || isAiTurn() || gameState !== 'idle';
+  }
+
+  function updateSeriesDots() {
+    ['red', 'gold'].forEach(side => {
+      const el = document.getElementById('dots' + (side === 'red' ? 'Red' : 'Gold'));
+      if (el) {
+        el.innerHTML = '';
+        for (let i = 0; i < MATCH_TARGET; i++) {
+          const dot = document.createElement('div');
+          dot.className = 's-dot' + (i < seriesScore[side] ? (' won ' + side) : '');
+          el.appendChild(dot);
+        }
+      }
+    });
+  }
+
+  function startNewRound() {
+    zones = { red: [], gold: [] };
+    pieceVisuals = {};
+    flyingPieces = [];
+    particles = [];
+    selectedPieces = new Set();
+    rollValue = 0;
+    turnNumber = 1;
+    gameState = 'idle';
+
+    playerAbilities = {
+      red: { overclock: true, vaporize: true, shaker: true },
+      gold: { overclock: true, vaporize: true, shaker: true }
+    };
+
+    // 8 caps per player (with special tactical caps starting Round 1 and 2)
+    for (let i = 0; i < 8; i++) {
+      let rType = 'normal', gType = 'normal';
+      if (i === 6) { rType = 'blast'; gType = 'blast'; }
+      if (i === 7 && roundNumber >= 2) { rType = 'turbo'; gType = 'turbo'; }
+
+      zones.red.push({ id: 'r' + (pieceSeq++), color: 'red', type: rType });
+      zones.gold.push({ id: 'g' + (pieceSeq++), color: 'gold', type: gType });
+    }
+
+    currentPlayer = 'red';
+    layoutPieces(true);
+    updateHUD();
+    setStatus('Round ' + roundNumber + '! Tap the <b>center die 🎲</b> to roll.');
+
+    document.getElementById('abilitiesDeck').classList.remove('hidden');
+    document.getElementById('launchBar').classList.add('hidden');
+  }
+
+  function startNewMatch() {
+    seriesScore = { red: 0, gold: 0 };
+    roundNumber = 1;
+    updateSeriesDots();
+    startNewRound();
+  }
+
+  /* ─────────────── TACTICAL ABILITIES HANDLERS ─────────────── */
+  // 1. OVERCLOCK ABILITY
+  document.getElementById('btnOverclock').addEventListener('click', () => {
+    if (!playerAbilities[currentPlayer].overclock || gameState !== 'idle') return;
+    document.getElementById('overclockOverlay').classList.remove('hidden');
+  });
+
+  document.querySelectorAll('.dial-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const chosenVal = parseInt(btn.dataset.val);
+      document.getElementById('overclockOverlay').classList.add('hidden');
+      playerAbilities[currentPlayer].overclock = false;
+      showToast('🎲', 'Overclocked roll to ' + chosenVal + '!');
+      SFX.play('roll');
+      rollValue = chosenVal;
+      diceAnim.currentFace = chosenVal;
+      handleRollResult(true);
+    });
+  });
+
+  document.getElementById('btnCancelOverclock').addEventListener('click', () => {
+    document.getElementById('overclockOverlay').classList.add('hidden');
+  });
+
+  // 2. VAPORIZE ABILITY
+  document.getElementById('btnVaporize').addEventListener('click', () => {
+    if (!playerAbilities[currentPlayer].vaporize || gameState !== 'idle') return;
+    executeVaporize(currentPlayer);
+  });
+
+  function executeVaporize(player) {
+    const ownCaps = zones[player].filter(p => p.color === player);
+    if (ownCaps.length === 0) return;
+    playerAbilities[player].vaporize = false;
+
+    const target = ownCaps[0];
+    zones[player] = zones[player].filter(p => p.id !== target.id);
+    const v = pieceVisuals[target.id] || { x: W / 2, y: H / 2 };
+    spawnDust(v.x, v.y, 'blast');
+    SFX.play('blast');
+    showToast('💥', getPlayerName(player) + ' vaporized 1 cap!');
+    layoutPieces(false);
+    updateHUD();
+    checkRoundVictory();
+  }
+
+  // 3. SHAKER ABILITY
+  document.getElementById('btnShaker').addEventListener('click', () => {
+    if (!playerAbilities[currentPlayer].shaker || gameState !== 'idle') return;
+    playerAbilities[currentPlayer].shaker = false;
+    showToast('🎰', getPlayerName(currentPlayer) + ' used Shaker Reroll!');
+    executeDiceRoll(true);
+  });
+
+  /* ─────────────── DICE ROLLING LOGIC ─────────────── */
+  function executeDiceRoll(isReroll = false) {
+    if (diceAnim.rolling) return;
+    gameState = 'rolling';
+    diceAnim.rolling = true;
+    SFX.play('roll');
+
+    let ticks = 0;
+    const interval = setInterval(() => {
+      diceAnim.currentFace = 1 + Math.floor(Math.random() * 6);
+      ticks++;
+      if (ticks >= 12) {
+        clearInterval(interval);
+        diceAnim.rolling = false;
+        rollValue = diceAnim.currentFace;
+        handleRollResult(isReroll);
+      }
+    }, 65);
+  }
+
+  function handleRollResult(wasCustom) {
+    const totalCapsInZone = zones[currentPlayer].length;
+    const name = getPlayerName(currentPlayer);
+
+    if (rollValue > totalCapsInZone) {
+      SFX.play('skip');
+      setStatus('<b>' + name + '</b> rolled <b>' + rollValue + '</b> — only ' + totalCapsInZone + ' cap(s) in arena. <b>Turn skipped!</b>');
+      showToast('⛔', 'Not enough caps — turn passed!');
+      gameState = 'idle';
+      setTimeout(() => switchNextTurn(), 1600);
+      return;
+    }
+
+    if (totalCapsInZone === rollValue) {
+      selectedPieces = new Set(zones[currentPlayer].map(p => p.id));
+      setStatus('<b>' + name + '</b> rolled <b>' + rollValue + '</b> — exact count! Tap <b>LAUNCH</b> or the center die.');
+      gameState = 'selecting';
+      document.getElementById('abilitiesDeck').classList.add('hidden');
+      document.getElementById('launchBar').classList.remove('hidden');
+      updateSelectionUI();
+      if (isAiTurn()) setTimeout(executePushAction, 800);
+      return;
+    }
+
+    selectedPieces = new Set();
+    gameState = 'selecting';
+    document.getElementById('abilitiesDeck').classList.add('hidden');
+    document.getElementById('launchBar').classList.remove('hidden');
+    updateSelectionUI();
+
+    if (isAiTurn()) {
+      setStatus('<b>CPU (GOLD)</b> rolled <b>' + rollValue + '</b> — strategizing...');
+      setTimeout(() => { executeAiSelection(); setTimeout(executePushAction, 800); }, 600);
+    } else {
+      setStatus('Rolled <b>' + rollValue + '</b>! Tap <b>' + rollValue + '</b> cap(s) to send across the laser barrier.');
+    }
+  }
+
+  /* ─────────────── ADVANCED STRATEGIC AI ─────────────── */
+  function executeAiSelection() {
+    const myZone = [...zones.gold];
+    const redStrayCaps = myZone.filter(p => p.color === 'red');
+    const ownGoldCaps = myZone.filter(p => p.color === 'gold');
+    const redRemainingInRed = zones.red.filter(p => p.color === 'red').length;
+
+    let priorityPool;
+    if (redRemainingInRed <= 3) {
+      priorityPool = [...redStrayCaps, ...ownGoldCaps];
+    } else {
+      priorityPool = [...ownGoldCaps, ...redStrayCaps];
+    }
+
+    selectedPieces = new Set(priorityPool.slice(0, rollValue).map(p => p.id));
+    updateSelectionUI();
+  }
+
+  function executeAiTacticalPowers() {
+    if (gameState !== 'idle') return;
+    const ownGold = zones.gold.filter(p => p.color === 'gold').length;
+    const goldAbilities = playerAbilities.gold;
+
+    if (ownGold === 1 && goldAbilities.vaporize) {
+      setTimeout(() => executeVaporize('gold'), 500);
+      return;
+    }
+
+    if (ownGold >= 1 && ownGold <= 6 && goldAbilities.overclock && zones.gold.length >= ownGold) {
+      goldAbilities.overclock = false;
+      showToast('🎲', 'CPU Overclocked roll to ' + ownGold + '!');
+      SFX.play('roll');
+      rollValue = ownGold;
+      diceAnim.currentFace = ownGold;
+      setTimeout(() => handleRollResult(true), 600);
+      return;
+    }
+
+    executeDiceRoll();
+  }
+
+  /* ─────────────── PUSH FLIGHT & SPECIAL EFFECTS ─────────────── */
+  document.getElementById('btnConfirm').addEventListener('click', executePushAction);
+
+  function executePushAction() {
+    if (selectedPieces.size !== rollValue) return;
+    gameState = 'animating';
+
+    document.getElementById('launchBar').classList.add('hidden');
+    document.getElementById('abilitiesDeck').classList.remove('hidden');
+
+    const fromZone = currentPlayer;
+    const toZone = fromZone === 'red' ? 'gold' : 'red';
+    const chosenIds = [...selectedPieces];
+
+    const hasBlast = chosenIds.some(id => {
+      const p = [...zones.red, ...zones.gold].find(item => item.id === id);
+      return p && p.type === 'blast';
+    });
+    const hasTurbo = chosenIds.some(id => {
+      const p = [...zones.red, ...zones.gold].find(item => item.id === id);
+      return p && p.type === 'turbo';
+    });
+
+    flyingPieces = chosenIds.map((id, idx) => {
+      const p = zones[fromZone].find(item => item.id === id);
+      const v = pieceVisuals[id];
+      return {
+        id,
+        color: p ? p.color : 'red',
+        type: p ? p.type : 'normal',
+        sx: v.x, sy: v.y,
+        ex: W / 2, ey: H / 2,
+        x: v.x, y: v.y,
+        progress: -idx * 0.12,
+        scale: 1
+      };
+    });
+
+    zones[fromZone] = zones[fromZone].filter(p => !selectedPieces.has(p.id));
+    chosenIds.forEach(id => {
+      const f = flyingPieces.find(item => item.id === id);
+      zones[toZone].push({ id, color: f.color, type: f.type });
+    });
+    layoutPieces(false);
+
+    chosenIds.forEach(id => {
+      const f = flyingPieces.find(item => item.id === id);
+      const tv = pieceVisuals[id];
+      if (f && tv) { f.ex = tv.tx; f.ey = tv.ty; }
+    });
+
+    SFX.play('push');
+    setStatus('Sending ' + chosenIds.length + ' cap(s) across the laser divide!');
+    selectedPieces = new Set();
+    updateHUD();
+
+    flyingPieces._meta = { hasBlast, hasTurbo, fromZone, toZone };
+  }
+
+  function finishPieceFlight() {
+    const meta = flyingPieces._meta || {};
+    const isHeatSurge = turnNumber >= HEAT_START_TURN;
+
+    flyingPieces.forEach(f => {
+      const v = pieceVisuals[f.id];
+      if (v) { v.x = v.tx; v.y = v.ty; }
+      spawnDust(v ? v.x : f.x, v ? v.y : f.y, f.color);
+    });
+    SFX.play('land');
+    flyingPieces = [];
+
+    if (isHeatSurge && Math.random() < 0.5) {
+      const destCaps = zones[meta.toZone];
+      if (destCaps.length > 0) {
+        const victim = destCaps[destCaps.length - 1];
+        zones[meta.toZone] = zones[meta.toZone].filter(p => p.id !== victim.id);
+        spawnDust(W / 2, H / 2, 'blast');
+        showToast('🔥', 'Overdrive Meltdown! 1 cap vaporized permanently!');
+        layoutPieces(false);
+      }
+    }
+
+    if (meta.hasBlast) {
+      SFX.play('blast');
+      showToast('💣', 'Blast Cap exploded! Vaporized 1 rival cap!');
+      const rivalCaps = zones[meta.toZone].filter(p => p.color === meta.toZone);
+      if (rivalCaps.length > 0) {
+        const victim = rivalCaps[0];
+        zones[meta.toZone] = zones[meta.toZone].filter(p => p.id !== victim.id);
+        spawnDust(W / 2, H / 2, 'blast');
+        layoutPieces(false);
+      }
+    }
+
+    if (meta.hasTurbo) {
+      showToast('⚡', 'Turbo Cap triggered! Bonus turn awarded!');
+      checkRoundVictory(true);
+      return;
+    }
+
+    checkRoundVictory(false);
+  }
+
+  /* ─────────────── VICTORY & SUDDEN DEATH CONDITIONS ─────────────── */
+  function checkRoundVictory(hasBonusTurn) {
+    const redInRed = zones.red.filter(p => p.color === 'red').length;
+    const goldInGold = zones.gold.filter(p => p.color === 'gold').length;
+
+    if (redInRed === 0) {
+      concludeRound('red');
+      return;
+    }
+    if (goldInGold === 0) {
+      concludeRound('gold');
+      return;
+    }
+
+    if (turnNumber >= MAX_TURNS_PER_ROUND) {
+      showToast('⏱️', 'Sudden Death Time Limit reached!');
+      if (redInRed < goldInGold) {
+        concludeRound('red', 'Won by Sudden Death Tiebreaker (Fewer caps left in arena)');
+      } else if (goldInGold < redInRed) {
+        concludeRound('gold', 'Won by Sudden Death Tiebreaker (Fewer caps left in arena)');
+      } else {
+        concludeRound(currentPlayer, 'Won Sudden Death Draw tiebreaker!');
+      }
+      return;
+    }
+
+    if (hasBonusTurn) {
+      gameState = 'idle';
+      setStatus("<b>" + getPlayerName(currentPlayer) + "</b>'s <b>BONUS TURN</b>! Tap the center die.");
+      if (isAiTurn()) setTimeout(executeAiTacticalPowers, 800);
+    } else {
+      switchNextTurn();
+    }
+  }
+
+  function switchNextTurn() {
+    currentPlayer = currentPlayer === 'red' ? 'gold' : 'red';
+    turnNumber++;
+    gameState = 'idle';
+
+    document.getElementById('launchBar').classList.add('hidden');
+    document.getElementById('abilitiesDeck').classList.remove('hidden');
+
+    updateHUD();
+    const name = getPlayerName(currentPlayer);
+    setStatus("<b>" + name + "</b>'s turn. Tap the <b>center die 🎲</b> or choose an <b>Ability</b>.");
+
+    if (isAiTurn()) {
+      setTimeout(executeAiTacticalPowers, 900);
+    }
+  }
+
+  function concludeRound(winner, customReason) {
+    gameState = 'roundOver';
+    seriesScore[winner]++;
+    updateSeriesDots();
+    SFX.play('win');
+
+    document.getElementById('launchBar').classList.add('hidden');
+    document.getElementById('abilitiesDeck').classList.remove('hidden');
+
+    if (seriesScore[winner] >= MATCH_TARGET) {
+      setTimeout(() => concludeMatch(winner), 700);
+      return;
+    }
+
+    const winnerName = winner === 'red' ? 'RED' : 'GOLD';
+    document.getElementById('winEmoji').textContent = winner === 'red' ? '🔴' : '🟡';
+    document.getElementById('winHeadline').textContent = winnerName + ' WINS ROUND ' + roundNumber + '!';
+    document.getElementById('winDetail').textContent = customReason || ('Series Score: Red ' + seriesScore.red + ' — ' + seriesScore.gold + ' Gold (Best of 3)');
+    document.getElementById('roundWinOverlay').classList.remove('hidden');
+  }
+
+  function concludeMatch(champion) {
+    gameState = 'matchOver';
+    const champName = champion === 'red' ? (gameMode === 'ai' ? 'YOU' : 'PLAYER 1 (RED)') : (gameMode === 'ai' ? 'CPU' : 'PLAYER 2 (GOLD)');
+    document.getElementById('matchHeadline').textContent = champName + ' WON THE MATCH!';
+    document.getElementById('matchDetail').textContent = 'Claimed ' + seriesScore[champion] + ' rounds to win the Strategic Championship!';
+    document.getElementById('matchWinOverlay').classList.remove('hidden');
+  }
+
+  /* ─────────────── MODAL WIRING ─────────────── */
+  document.getElementById('optAi').addEventListener('click', () => {
+    gameMode = 'ai';
+    document.getElementById('nameRed').textContent = 'YOU (RED)';
+    document.getElementById('nameGold').textContent = 'CPU (GOLD)';
+    document.getElementById('startOverlay').classList.add('hidden');
+    startNewMatch();
+  });
+
+  document.getElementById('optPvp').addEventListener('click', () => {
+    gameMode = 'pvp';
+    document.getElementById('nameRed').textContent = 'PLAYER 1 (RED)';
+    document.getElementById('nameGold').textContent = 'PLAYER 2 (GOLD)';
+    document.getElementById('startOverlay').classList.add('hidden');
+    startNewMatch();
+  });
+
+  document.getElementById('btnHelp').addEventListener('click', () => {
+    document.getElementById('rulesOverlay').classList.remove('hidden');
+  });
+  document.getElementById('btnShowRulesFromStart').addEventListener('click', () => {
+    document.getElementById('rulesOverlay').classList.remove('hidden');
+  });
+  document.getElementById('btnCloseRules').addEventListener('click', () => {
+    document.getElementById('rulesOverlay').classList.add('hidden');
+  });
+
+  document.getElementById('btnNextRound').addEventListener('click', () => {
+    document.getElementById('roundWinOverlay').classList.add('hidden');
+    roundNumber++;
+    startNewRound();
+  });
+
+  document.getElementById('btnRestartMatch').addEventListener('click', () => {
+    document.getElementById('roundWinOverlay').classList.add('hidden');
+    startNewMatch();
+  });
+
+  document.getElementById('btnPlayAgain').addEventListener('click', () => {
+    document.getElementById('matchWinOverlay').classList.add('hidden');
+    startNewMatch();
+  });
+
+  document.getElementById('btnSound').addEventListener('click', () => {
+    SFX.muted = !SFX.muted;
+    document.getElementById('btnSound').innerHTML = SFX.muted ? '<i class="fa-solid fa-volume-xmark"></i>' : '<i class="fa-solid fa-volume-high"></i>';
+    showToast(SFX.muted ? '🔇' : '🔊', SFX.muted ? 'Audio muted' : 'Audio enabled');
+  });
+
+  /* ─────────────── BOOTSTRAP ─────────────── */
+  resizeBoard();
+  gameLoop();
+})();
+</script>
+</body>
+</html>
