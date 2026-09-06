@@ -1,8 +1,11 @@
 {
   "name": "Hazard Rush",
   "short_name": "Hazard Rush",
-  "start_url": "index.html",
+  "start_url": "./index.html",
+  "scope": "./",
+  "id": "hazard-rush-game",
   "display": "standalone",
+  "display_override": ["fullscreen", "standalone", "minimal-ui"],
   "background_color": "#050816",
   "theme_color": "#050816",
   "orientation": "portrait",

@@ -1,4 +1,4 @@
-const CACHE_NAME = "snake-trail-cache-v2";
+const CACHE_NAME = "hazard-rush-cache-v3";
 const ASSETS = [
   "index.html",
   "indx.html",
