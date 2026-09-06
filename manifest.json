@@ -1,12 +1,12 @@
 {
-  "name": "Snake Trail Race",
-  "short_name": "Snake Trail",
+  "name": "Hazard Rush",
+  "short_name": "Hazard Rush",
   "start_url": "index.html",
   "display": "standalone",
-  "background_color": "#080a11",
-  "theme_color": "#080a11",
+  "background_color": "#050816",
+  "theme_color": "#050816",
   "orientation": "portrait",
-  "description": "An enterprise-grade, highly polished, and addictive Snake Trail Race board game. Play against AI or with a friend.",
+  "description": "Hazard Rush — dodge traps, grab shields, warp through wormholes. Play vs AI or a friend! Addictive arcade racing board game.",
   "icons": [
     {
       "src": "icon.jpg",

@@ -6,7 +6,29 @@
 /* ==========================================================================
    CONSTANTS & CONFIGURATION
    ========================================================================== */
-const FINISH = 43;
+function getFinishForLevel(level) {
+  const lvl = Math.max(1, parseInt(level) || 1);
+  // Level 1 starts with 20 tiles, and increases by 10 per level as you advance:
+  // L1: 20, L2: 30, L3: 40, L4: 50, L5: 60... (capped at 120 for smooth mobile camera)
+  return Math.min(120, 20 + (lvl - 1) * 10);
+}
+
+function getActiveFinish() {
+  const lvl = (typeof gameState !== 'undefined' && gameState.mode === "pvp")
+    ? gameState.selectedShapeLevel
+    : (typeof gameState !== 'undefined' ? gameState.currentLevel : 1);
+  return getFinishForLevel(lvl);
+}
+
+if (typeof window !== "undefined") {
+  Object.defineProperty(window, 'FINISH', {
+    get: function() {
+      return getActiveFinish();
+    },
+    configurable: true
+  });
+}
+
 const specials = {
   5: { type: "bonus", label: "⚡ +10", effect: 10, color: "#10e394" },
   10: { type: "bonus", label: "⚡ +5", effect: 5, color: "#10e394" },
@@ -33,28 +55,30 @@ let gameState = {
   mode: "ai", // "ai" or "pvp"
   players: [
     {
-      name: "RED PLAYER",
+      name: "RED RACER",
       emoji: "\uf135",
       html: '<i class="fa-solid fa-rocket"></i>',
-      color: "#ff3a5c",
+      color: "#ff4058",
       position: 0,
       visualX: 35,
       visualY: 42,
       targetX: 35,
       targetY: 42,
-      frozenTurns: 0
+      frozenTurns: 0,
+      hasShield: false
     },
     {
-      name: "BLUE PLAYER",
+      name: "AI COMP",
       emoji: "\uf753",
-      html: '<i class="fa-solid fa-meteor"></i>',
-      color: "#00b8ff",
+      html: '<i class="fa-solid fa-robot"></i>',
+      color: "#00d9ff",
       position: 0,
       visualX: 35,
       visualY: 42,
       targetX: 35,
       targetY: 42,
-      frozenTurns: 0
+      frozenTurns: 0,
+      hasShield: false
     }
   ],
   currentPlayer: 0,
@@ -67,6 +91,9 @@ let gameState = {
   currentLevel: 1,
   selectedShapeLevel: 1,
   levelSpecials: {},
+  matchStartTime: 0,
+  shieldsCollected: 0,
+  coinsEarned: 0,
   stats: {
     games: 0,
     wins: 0,
@@ -92,8 +119,18 @@ const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
 // Screens
+const homeScreen = document.getElementById("homeScreen");
 const setupScreen = document.getElementById("setupScreen");
 const gameScreen = document.getElementById("gameScreen");
+
+// Home Screen Elements
+const homePlayBtn = document.getElementById("homePlayBtn");
+const homeVsAiBtn = document.getElementById("homeVsAiBtn");
+const homePassPlayBtn = document.getElementById("homePassPlayBtn");
+const homeMoreModesBtn = document.getElementById("homeMoreModesBtn");
+const homeSettingsBtn = document.getElementById("homeSettingsBtn");
+const homeMuteBtn = document.getElementById("homeMuteBtn");
+const setupBackHomeBtn = document.getElementById("setupBackHomeBtn");
 
 // Setup DOM elements
 const modeAi = document.getElementById("modeAi");
@@ -105,6 +142,13 @@ const blueAvatarsContainer = document.getElementById("blueAvatars");
 const startGameBtn = document.getElementById("startGameBtn");
 
 // Game HUD elements
+const btnPauseGame = document.getElementById("btnPauseGame");
+const gameHudLevel = document.getElementById("gameHudLevel");
+const hudShieldCount = document.getElementById("hudShieldCount");
+const pinRedRacer = document.getElementById("pinRedRacer");
+const pinBlueRacer = document.getElementById("pinBlueRacer");
+const raceTrackFill = document.getElementById("raceTrackFill");
+
 const redCard = document.getElementById("redCard");
 const blueCard = document.getElementById("blueCard");
 const redAvatarBadge = document.getElementById("redAvatarBadge");
@@ -123,18 +167,31 @@ const turnStatus = document.getElementById("turnStatus");
 const rollButton = document.getElementById("roll");
 const diceFace = document.getElementById("dice");
 const diceLabel = document.getElementById("diceLabel");
+const btnSetTrap = document.getElementById("btnSetTrap");
+const trapChargesBadge = document.getElementById("trapChargesBadge");
 
 const mainMessage = document.getElementById("mainMessage");
 const hint = document.getElementById("hint");
 const toast = document.getElementById("toast");
 
-// Headers and Modals
+// Modals & Pause Menu
+const pauseModal = document.getElementById("pauseModal");
+const btnResumeGame = document.getElementById("btnResumeGame");
+const btnRestartGame = document.getElementById("btnRestartGame");
+const btnPauseSettings = document.getElementById("btnPauseSettings");
+const btnQuitToMenu = document.getElementById("btnQuitToMenu");
+
+const settingsModal = document.getElementById("settingsModal");
+const modalSoundToggle = document.getElementById("modalSoundToggle");
+const btnCloseSettings = document.getElementById("btnCloseSettings");
+
 const muteBtn = document.getElementById("muteBtn");
 const restartBtn = document.getElementById("restart");
 const backBtn = document.getElementById("backBtn");
 const modal = document.getElementById("modal");
 const winnerTitle = document.getElementById("winner");
 const playAgainBtn = document.getElementById("playAgain");
+const btnReturnHome = document.getElementById("btnReturnHome");
 
 // Punish Modal
 const punishModal = document.getElementById("punishModal");
@@ -149,6 +206,7 @@ const prevLevelBtn = document.getElementById("prevLevelBtn");
 const nextLevelBtn = document.getElementById("nextLevelBtn");
 const levelValue = document.getElementById("levelValue");
 const levelHint = document.getElementById("levelHint");
+const levelDiffBadge = document.getElementById("levelDiffBadge");
 
 const prevShapeBtn = document.getElementById("prevShapeBtn");
 const nextShapeBtn = document.getElementById("nextShapeBtn");
@@ -195,14 +253,42 @@ function initSetupScreen() {
 
   function updateLobbySelectors() {
     // Solo Level Selector Refresh
-    levelValue.textContent = `Level ${gameState.currentLevel}`;
-    levelHint.textContent = `Board Shape: ${getShapeName(gameState.currentLevel)}`;
+    const soloFinish = getFinishForLevel(gameState.currentLevel);
+    const lvl = gameState.currentLevel;
+    levelValue.textContent = `Level ${lvl}`;
+
+    // Feature progression indicator
+    let unlockBadge = "NORMAL";
+    let unlockSummary = "⚡ Speed Rush (Bonuses)";
+    if (lvl >= 50) {
+      unlockBadge = "COSMIC";
+      unlockSummary = "🌌 Wormholes & All Hazards";
+    } else if (lvl >= 40) {
+      unlockBadge = "LEGEND";
+      unlockSummary = "🛡️ Shields & Hazards";
+    } else if (lvl >= 30) {
+      unlockBadge = "ICE AGE";
+      unlockSummary = "❄️ Freezes, Resets & Traps";
+    } else if (lvl >= 20) {
+      unlockBadge = "CHAOS";
+      unlockSummary = "💥 Resets & Traps";
+    } else if (lvl >= 10) {
+      unlockBadge = "HAZARD";
+      unlockSummary = "💀 Traps & Sabotage Ability";
+    }
+
+    if (levelDiffBadge) {
+      levelDiffBadge.textContent = unlockBadge;
+    }
+
+    levelHint.textContent = `${getShapeName(lvl)} • ${unlockSummary} (${soloFinish} Tiles)`;
     drawMiniBoard("levelPreviewCanvas", gameState.currentLevel);
     
     // PVP Shape Selector Refresh
     const maxShapeUnlocked = Math.max(1, gameState.highestClearedLevel);
-    shapeValue.textContent = getShapeName(gameState.selectedShapeLevel);
-    shapeHint.textContent = `Cleared level shapes unlocked: 1 to ${maxShapeUnlocked}`;
+    const pvpFinish = getFinishForLevel(gameState.selectedShapeLevel);
+    shapeValue.textContent = `L${gameState.selectedShapeLevel} (${pvpFinish} Tiles)`;
+    shapeHint.textContent = `${getShapeName(gameState.selectedShapeLevel)} (Unlocked: 1 to ${maxShapeUnlocked})`;
     drawMiniBoard("shapePreviewCanvas", gameState.selectedShapeLevel);
   }
 
@@ -331,6 +417,67 @@ function initSetupScreen() {
     resetGame();
   });
 
+  // Home Screen Navigations
+  if (homePlayBtn) {
+    homePlayBtn.addEventListener("click", () => {
+      // Save configurations
+      gameState.players[0].name = redNameInput.value.trim() || "RED RACER";
+      gameState.players[0].emoji = AVATARS[selectedRedAvatarIdx].emoji;
+      gameState.players[0].html = AVATARS[selectedRedAvatarIdx].html;
+      gameState.players[0].color = AVATARS[selectedRedAvatarIdx].color;
+
+      gameState.players[1].name = blueNameInput.value.trim() || (gameState.mode === "ai" ? "AI COMP" : "BLUE PLAYER");
+      gameState.players[1].emoji = AVATARS[selectedBlueAvatarIdx].emoji;
+      gameState.players[1].html = AVATARS[selectedBlueAvatarIdx].html;
+      gameState.players[1].color = AVATARS[selectedBlueAvatarIdx].color;
+
+      GameSFX.init();
+      homeScreen.style.display = "none";
+      gameScreen.style.opacity = "0";
+      gameScreen.style.display = "flex";
+      setTimeout(() => {
+        gameScreen.style.transition = "opacity 0.4s ease";
+        gameScreen.style.opacity = "1";
+      }, 50);
+
+      loadStats();
+      resetGame();
+    });
+  }
+
+  if (homeVsAiBtn) {
+    homeVsAiBtn.addEventListener("click", () => {
+      homeScreen.style.display = "none";
+      setupScreen.style.display = "flex";
+      switchGameTab(tabHazardRush, panelHazardRush);
+      modeAi.click();
+    });
+  }
+
+  if (homePassPlayBtn) {
+    homePassPlayBtn.addEventListener("click", () => {
+      homeScreen.style.display = "none";
+      setupScreen.style.display = "flex";
+      switchGameTab(tabHazardRush, panelHazardRush);
+      modePvp.click();
+    });
+  }
+
+  if (homeMoreModesBtn) {
+    homeMoreModesBtn.addEventListener("click", () => {
+      homeScreen.style.display = "none";
+      setupScreen.style.display = "flex";
+      switchGameTab(tabArcadeMore, panelArcadeMore);
+    });
+  }
+
+  if (setupBackHomeBtn) {
+    setupBackHomeBtn.addEventListener("click", () => {
+      setupScreen.style.display = "none";
+      homeScreen.style.display = "flex";
+    });
+  }
+
   // Run initial lobby selectors update
   updateLobbySelectors();
 }
@@ -365,14 +512,15 @@ function drawMiniBoard(canvasId, level) {
   const h = c.height;
   ctxMini.clearRect(0, 0, w, h);
   
-  const gridData = generateGridShape(level, FINISH);
+  const lvlFinish = getFinishForLevel(level);
+  const gridData = generateGridShape(level, lvlFinish);
   const left = 20; const top = 20; const right = 20; const bottom = 20;
   
   const gridW = Math.max(1, gridData.maxX - gridData.minX);
   const gridH = Math.max(1, gridData.maxY - gridData.minY);
   
   ctxMini.beginPath();
-  for (let i = 0; i <= FINISH; i++) {
+  for (let i = 0; i <= lvlFinish; i++) {
     // Map grid points to mini canvas dimensions
     const normX = (gridData.pts[i].x - gridData.minX) / gridW;
     const normY = (gridData.pts[i].y - gridData.minY) / gridH;
@@ -385,7 +533,7 @@ function drawMiniBoard(canvasId, level) {
   ctxMini.lineWidth = 3;
   ctxMini.lineCap = "round";
   ctxMini.lineJoin = "round";
-  ctxMini.strokeStyle = "rgba(200,80,255,0.8)";
+  ctxMini.strokeStyle = "rgba(0, 217, 255, 0.85)";
   ctxMini.stroke();
 }
 
@@ -399,7 +547,6 @@ function buildBoard() {
 
 function generateGridShape(level, totalPoints) {
   let pts = [];
-  // 20 families × 10 variations = 200 shapes
   const family = (level - 1) % 20;
   const variation = Math.floor((level - 1) / 20) % 10;
 
@@ -432,7 +579,7 @@ function generateGridShape(level, totalPoints) {
       }
     }
   } else if (family === 3) {
-    // INWARD SQUARE SPIRAL (counter-clockwise)
+    // INWARD/OUTWARD SQUARE SPIRAL (counter-clockwise)
     let x = 0, y = 0, dx = 1, dy = 0, seg = 1, passed = 0;
     for (let i = 0; i <= totalPoints; i++) {
       pts.push({ x, y });
@@ -444,51 +591,61 @@ function generateGridShape(level, totalPoints) {
       }
     }
   } else if (family === 4) {
-    // DIAGONAL STAIRCASE (right then up, varied step)
-    const step = 2 + (variation % 4);
-    let x = 0, y = 0, right = true;
+    // DIAGONAL STAIRCASE (alternates right and up without backtrack)
+    const stepX = 1 + (variation % 3);
+    const stepY = 1 + ((variation + 1) % 3);
+    let x = 0, y = 0;
     for (let i = 0; i <= totalPoints; i++) {
       pts.push({ x, y });
-      if (i % step === step - 1) right = !right;
-      if (right) x += 1; else y -= 1;
+      const phase = i % (stepX + stepY);
+      if (phase < stepX) x += 1;
+      else y -= 1;
     }
   } else if (family === 5) {
-    // U-SHAPE COMB (teeth going up)
+    // U-SHAPE COMB (progressive columns rising and dipping without overlapping)
     const armH = 3 + (variation % 4);
-    const gap = 2 + (variation % 3);
     let x = 0, y = 0, goingUp = true;
     for (let i = 0; i <= totalPoints; i++) {
       pts.push({ x, y });
       if (goingUp) {
         y -= 1;
-        if (Math.abs(y) >= armH) { goingUp = false; x += gap > 1 ? 1 : 1; }
+        if (Math.abs(y) >= armH) {
+          goingUp = false;
+          x += 1;
+        }
       } else {
         y += 1;
-        if (y >= 0) { goingUp = true; x += 1; }
+        if (y >= 0) {
+          goingUp = true;
+          x += 1;
+        }
       }
     }
   } else if (family === 6) {
-    // ZIGZAG COLUMNS (down-right-up-right pattern)
+    // ZIGZAG COLUMNS (progressive downward-upward serpent without backtrack)
     const colH = 3 + (variation % 5);
     let x = 0, y = 0, down = true;
     for (let i = 0; i <= totalPoints; i++) {
       pts.push({ x, y });
       if (down) {
-        y += 1;
-        if (y >= colH) { down = false; x += 1; }
-      } else {
         y -= 1;
-        if (y <= 0) { down = true; x += 1; }
+        if (-y >= colH) { down = false; x += 1; }
+      } else {
+        y += 1;
+        if (y >= 0) { down = true; x += 1; }
       }
     }
   } else if (family === 7) {
-    // EXPANDING L-SHAPES
-    let x = 0, y = 0, armLen = 2 + (variation % 3);
-    for (let i = 0; i <= totalPoints; ) {
-      for (let j = 0; j < armLen && i <= totalPoints; j++, i++) pts.push({ x: x + j, y });
-      x += armLen - 1; armLen++;
-      for (let j = 1; j < armLen && i <= totalPoints; j++, i++) pts.push({ x, y: y - j });
-      y -= armLen - 1;
+    // EXPANDING L-SHAPES (Staircase blocks extending right and up progressively)
+    const span = 3 + (variation % 4);
+    let x = 0, y = 0;
+    for (let i = 0; i <= totalPoints; i++) {
+      pts.push({ x, y });
+      if ((i % (span * 2)) < span) {
+        x += 1;
+      } else {
+        y -= 1;
+      }
     }
   } else if (family === 8) {
     // BRICK-LAYER OFFSET ROWS
@@ -496,181 +653,247 @@ function generateGridShape(level, totalPoints) {
     for (let i = 0; i <= totalPoints; i++) {
       const r = Math.floor(i / cols);
       const c = r % 2 === 0 ? (i % cols) : cols - 1 - (i % cols);
-      const offset = (r % 2) * 0; // no offset in grid coords
-      pts.push({ x: c * 2, y: -r * 2 }); // double-spaced
+      pts.push({ x: c * 2, y: -r * 2 });
     }
   } else if (family === 9) {
-    // DIAMOND GRID SERPENTINE (rotated 45°)
+    // DIAMOND GRID SERPENTINE
     const cols = 4 + (variation % 4);
     for (let i = 0; i <= totalPoints; i++) {
       const r = Math.floor(i / cols);
       const c = r % 2 === 0 ? (i % cols) : cols - 1 - (i % cols);
-      pts.push({ x: c - r, y: -(c + r) });
+      pts.push({ x: c * 2 + (r % 2), y: -r * 2 });
     }
   } else if (family === 10) {
-    // CROSS/PLUS WINDING PATH
-    const arm = 3 + (variation % 4);
-    const dirs = [[1,0],[0,-1],[-1,0],[0,1]];
-    let x = 0, y = 0, i = 0, di = 0;
-    while (i <= totalPoints) {
-      for (let s = 0; s < arm && i <= totalPoints; s++, i++) {
-        pts.push({ x, y });
-        x += dirs[di % 4][0]; y += dirs[di % 4][1];
+    // CROSS WINDING PATH (advances rightwards with up/down wings)
+    const wingH = 2 + (variation % 3);
+    let x = 0, y = 0, mode = 0;
+    for (let i = 0; i <= totalPoints; i++) {
+      pts.push({ x, y });
+      if (mode === 0) {
+        y -= 1;
+        if (-y >= wingH) { mode = 1; x += 1; }
+      } else if (mode === 1) {
+        y += 1;
+        if (y >= 0) { mode = 2; x += 1; }
+      } else if (mode === 2) {
+        y += 1;
+        if (y >= wingH) { mode = 3; x += 1; }
+      } else {
+        y -= 1;
+        if (y <= 0) { mode = 0; x += 1; }
       }
-      di++;
     }
   } else if (family === 11) {
-    // TRIANGLE STACKING (row gets shorter each level)
-    const base = 6 + (variation % 5);
-    let x = 0, y = 0, rowW = base, rowStart = 0, col = 0;
+    // TRIANGLE STACKING SERPENTINE
+    const cols = 5 + (variation % 3);
     for (let i = 0; i <= totalPoints; i++) {
-      pts.push({ x: rowStart + col, y });
-      col++;
-      if (col >= rowW) {
-        col = 0; y -= 1;
-        rowStart += Math.floor((base - rowW + 1) / 2);
-        rowW = Math.max(1, rowW - 1);
-      }
+      const r = Math.floor(i / cols);
+      const c = r % 2 === 0 ? (i % cols) : cols - 1 - (i % cols);
+      pts.push({ x: c + Math.floor(r / 2), y: -r });
     }
   } else if (family === 12) {
-    // WAVE-STEP (sine-like but grid-snapped)
-    const period = 4 + (variation % 4);
+    // WAVE-STEP (progressive horizontal sine wave without backtracking)
+    const waveH = 2 + (variation % 3);
+    let x = 0, y = 0, goingDown = false;
+    for (let i = 0; i <= totalPoints; i++) {
+      pts.push({ x, y });
+      x += 1;
+      if (goingDown) {
+        y += 1;
+        if (y >= waveH) goingDown = false;
+      } else {
+        y -= 1;
+        if (y <= -waveH) goingDown = true;
+      }
+    }
+  } else if (family === 13) {
+    // TALL RECTANGULAR EXPANDING SPIRAL
+    let x = 0, y = 0, dx = 1, dy = 0, w = 1, h = 2, seg = w, passed = 0, isW = true;
+    for (let i = 0; i <= totalPoints; i++) {
+      pts.push({ x, y });
+      x += dx; y += dy; passed++;
+      if (passed >= seg) {
+        passed = 0;
+        const tmp = dx; dx = dy; dy = -tmp;
+        isW = !isW;
+        if (isW) { w++; h++; }
+        seg = isW ? w : h;
+      }
+    }
+  } else if (family === 14) {
+    // FIGURE-8 DOUBLE ARCH CHAIN (moves progressive rightward in dual loops)
+    const loopH = 2 + (variation % 3);
+    let x = 0, y = 0, state = 0;
+    for (let i = 0; i <= totalPoints; i++) {
+      pts.push({ x, y });
+      if (state === 0) {
+        y -= 1; if (-y >= loopH) { state = 1; x += 1; }
+      } else if (state === 1) {
+        x += 1; state = 2;
+      } else if (state === 2) {
+        y += 1; if (y >= 0) { state = 3; x += 1; }
+      } else if (state === 3) {
+        y += 1; if (y >= loopH) { state = 4; x += 1; }
+      } else if (state === 4) {
+        x += 1; state = 5;
+      } else {
+        y -= 1; if (y <= 0) { state = 0; x += 1; }
+      }
+    }
+  } else if (family === 15) {
+    // MAZE CORRIDORS (horizontal runways linked by vertical shifts)
+    const runW = 4 + (variation % 4);
+    for (let i = 0; i <= totalPoints; i++) {
+      const r = Math.floor(i / runW);
+      const c = r % 2 === 0 ? (i % runW) : (runW - 1 - (i % runW));
+      pts.push({ x: c, y: -r * 2 });
+    }
+  } else if (family === 16) {
+    // CATERPILLAR (wavy inchworm moving forward)
+    const humpW = 3 + (variation % 3);
+    let x = 0, y = 0, upward = true;
+    for (let i = 0; i <= totalPoints; i++) {
+      pts.push({ x, y });
+      x += 1;
+      if (upward) {
+        y -= 1;
+        if (-y >= humpW) upward = false;
+      } else {
+        y += 1;
+        if (y >= 0) upward = true;
+      }
+    }
+  } else if (family === 17) {
+    // TALL COLUMNS SERPENTINE (narrow vertical climbs)
+    const colH = 6 + (variation % 5);
+    for (let i = 0; i <= totalPoints; i++) {
+      const c = Math.floor(i / colH);
+      const r = c % 2 === 0 ? (i % colH) : (colH - 1 - (i % colH));
+      pts.push({ x: c, y: -r });
+    }
+  } else if (family === 18) {
+    // DOUBLE-BACK SNAKE (progressive stepped ramp without overlapping)
+    const rampW = 4 + (variation % 4);
     let x = 0, y = 0;
     for (let i = 0; i <= totalPoints; i++) {
       pts.push({ x, y });
-      const phase = i % (period * 2);
-      if (phase < period / 2) y -= 1;
-      else if (phase < period) x += 1;
-      else if (phase < period + period / 2) y += 1;
-      else x += 1;
-    }
-  } else if (family === 13) {
-    // OUTWARD RECTANGULAR SPIRAL (taller than wide)
-    let x = 0, y = 0, w = 1, h = 2;
-    const dirs = [[1,0],[0,-1],[-1,0],[0,1]];
-    let di = 0, i = 0;
-    while (i <= totalPoints) {
-      const dist = di % 2 === 0 ? w : h;
-      for (let s = 0; s < dist && i <= totalPoints; s++, i++) {
-        pts.push({ x, y });
-        x += dirs[di % 4][0]; y += dirs[di % 4][1];
+      if (i % rampW === rampW - 1) {
+        y -= 1;
+        x += 1;
+      } else {
+        x += 1;
       }
-      if (di % 2 === 0) h++; else w++;
-      di++;
-    }
-  } else if (family === 14) {
-    // FIGURE-8 / BOWTIE GRID LOOPS
-    const halfW = 3 + (variation % 3);
-    const halfH = 2 + (variation % 3);
-    let x = 0, y = 0, phase = 0;
-    for (let i = 0; i <= totalPoints; i++) {
-      pts.push({ x, y });
-      const seg = i % (halfW * 2 + halfH * 2);
-      if (seg < halfW) x += 1;
-      else if (seg < halfW + halfH) y -= 1;
-      else if (seg < halfW * 2 + halfH) x -= 1;
-      else y += 1;
-    }
-  } else if (family === 15) {
-    // MAZE CORRIDORS (alternating long runs)
-    const runH = 4 + (variation % 5);
-    const runW = 3 + (variation % 4);
-    let x = 0, y = 0, di = 0;
-    const dirs = [[1,0],[0,-1],[-1,0],[0,-1]]; // right, up, left, up pattern
-    const lens = [runW, runH, runW, 1];
-    for (let i = 0; i <= totalPoints; ) {
-      const len = lens[di % 4];
-      for (let s = 0; s < len && i <= totalPoints; s++, i++) {
-        pts.push({ x, y });
-        x += dirs[di % 4][0]; y += dirs[di % 4][1];
-      }
-      di++;
-    }
-  } else if (family === 16) {
-    // CATERPILLAR (horizontal run with vertical spur every N)
-    const runLen = 3 + (variation % 4);
-    const spurH = 2 + (variation % 3);
-    let x = 0, y = 0, i = 0;
-    while (i <= totalPoints) {
-      for (let s = 0; s < runLen && i <= totalPoints; s++, i++) { pts.push({ x, y }); x += 1; }
-      for (let s = 0; s < spurH && i <= totalPoints; s++, i++) { pts.push({ x, y }); y -= 1; }
-      for (let s = 0; s < runLen && i <= totalPoints; s++, i++) { pts.push({ x, y }); x -= 1; }
-      for (let s = 0; s < spurH && i <= totalPoints; s++, i++) { pts.push({ x, y }); y -= 1; }
-    }
-  } else if (family === 17) {
-    // TALL COLUMNS SERPENTINE (very narrow, tall columns)
-    const colH = 6 + (variation % 6);
-    let x = 0, y = 0, down = false;
-    for (let i = 0; i <= totalPoints; i++) {
-      pts.push({ x, y });
-      if (down) { y += 1; if (y >= 0) { down = false; x += 1; } }
-      else { y -= 1; if (-y >= colH) { down = true; x += 1; } }
-    }
-  } else if (family === 18) {
-    // DOUBLE-BACK SNAKE (goes right, doubles back partially)
-    const fwd = 5 + (variation % 5);
-    const back = 2 + (variation % 3);
-    let x = 0, y = 0, i = 0;
-    while (i <= totalPoints) {
-      for (let s = 0; s < fwd && i <= totalPoints; s++, i++) { pts.push({ x, y }); x += 1; }
-      y -= 1;
-      for (let s = 0; s < back && i <= totalPoints; s++, i++) { pts.push({ x, y }); x -= 1; }
-      y -= 1;
     }
   } else {
-    // family === 19: STACKED ARCHES (flat bottom, arched top)
+    // family === 19: STACKED ARCHES
     const archW = 4 + (variation % 4);
-    const archH = 2 + (variation % 3);
-    let x = 0, y = 0, i = 0;
-    while (i <= totalPoints) {
-      // bottom run
-      for (let s = 0; s < archW && i <= totalPoints; s++, i++) { pts.push({ x, y }); x += 1; }
-      // up
-      for (let s = 0; s < archH && i <= totalPoints; s++, i++) { pts.push({ x, y }); y -= 1; }
-      // top run back
-      for (let s = 0; s < archW && i <= totalPoints; s++, i++) { pts.push({ x, y }); x -= 1; }
-      // move up to next arch
-      for (let s = 0; s < archH && i <= totalPoints; s++, i++) { pts.push({ x, y }); y -= 1; }
+    for (let i = 0; i <= totalPoints; i++) {
+      const r = Math.floor(i / archW);
+      const c = r % 2 === 0 ? (i % archW) : archW - 1 - (i % archW);
+      pts.push({ x: c, y: -r * 2 });
     }
   }
 
+  // --- STRICT SELF-AVOIDING COLLISION RESOLUTION ---
+  // Guarantees 100% that no two spaces ever share the same (x, y) coordinate
+  const resolvedPts = [];
+  const occupied = new Set();
+
+  pts.forEach((pt, idx) => {
+    let curX = pt.x;
+    let curY = pt.y;
+    let key = `${curX},${curY}`;
+
+    if (!occupied.has(key)) {
+      occupied.add(key);
+      resolvedPts.push({ x: curX, y: curY });
+      return;
+    }
+
+    // Coordinate collision detected! Find the nearest unoccupied neighbor
+    const prevPt = resolvedPts[idx - 1] || { x: curX, y: curY };
+    const candidates = [
+      { x: curX + 1, y: curY },
+      { x: curX, y: curY - 1 },
+      { x: curX - 1, y: curY },
+      { x: curX, y: curY + 1 },
+      { x: curX + 1, y: curY - 1 },
+      { x: curX - 1, y: curY - 1 }
+    ];
+
+    let found = false;
+    for (const cand of candidates) {
+      const candKey = `${cand.x},${cand.y}`;
+      if (!occupied.has(candKey)) {
+        occupied.add(candKey);
+        resolvedPts.push({ x: cand.x, y: cand.y });
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) {
+      let radius = 2;
+      while (!found && radius < 20) {
+        for (let dx = -radius; dx <= radius && !found; dx++) {
+          for (let dy = -radius; dy <= radius && !found; dy++) {
+            const candKey = `${curX + dx},${curY + dy}`;
+            if (!occupied.has(candKey)) {
+              occupied.add(candKey);
+              resolvedPts.push({ x: curX + dx, y: curY + dy });
+              found = true;
+            }
+          }
+        }
+        radius++;
+      }
+    }
+  });
+
   // Find bounds
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-  pts.forEach(p => {
+  resolvedPts.forEach(p => {
     if (p.x < minX) minX = p.x;
     if (p.x > maxX) maxX = p.x;
     if (p.y < minY) minY = p.y;
     if (p.y > maxY) maxY = p.y;
   });
 
-  return { pts, minX, maxX, minY, maxY };
+  return { pts: resolvedPts, minX, maxX, minY, maxY };
 }
 
 function buildBoardForLevel(level) {
   gameState.spaces = [];
   const width = canvas.width;
+  const finish = getFinishForLevel(level);
   
-  // Generate clean grid path
-  const gridData = generateGridShape(level, FINISH);
+  // Generate clean non-overlapping grid path
+  const gridData = generateGridShape(level, finish);
   const gridPts = gridData.pts;
   
-  // 1. Generate Specials deterministically
+  // 1. Generate Specials deterministically with Gradual Level Progression:
+  // L1-9:   Beginner Rush (Bonuses only)
+  // L10+:   Traps & "Set Trap" Sabotage unlocked
+  // L20+:   Resets unlocked
+  // L30+:   Freezes unlocked
+  // L40+:   Shields unlocked
+  // L50+:   Portals/Wormholes unlocked
   gameState.levelSpecials = {};
   let seed = level * 17;
   const nextRand = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
 
   const numBonuses = Math.max(1, 4 - Math.floor(level / 150));
-  const numTraps = Math.min(6, 2 + Math.floor(level / 70));
-  const numResets = 1 + Math.floor(level / 20); // Scale resets
-  const numFreezes = Math.min(3, 1 + Math.floor(level / 100));
-  const numShields = level >= 3 ? Math.min(3, 1 + Math.floor(level / 50)) : 0;
-  const numWormholes = level >= 10 ? Math.min(2, 1 + Math.floor(level / 150)) : 0;
+  const numTraps = level >= 10 ? Math.min(6, 2 + Math.floor((level - 10) / 40)) : 0;
+  const numResets = level >= 20 ? Math.min(4, 1 + Math.floor((level - 20) / 30)) : 0;
+  const numFreezes = level >= 30 ? Math.min(3, 1 + Math.floor((level - 30) / 50)) : 0;
+  const numShields = level >= 40 ? Math.min(3, 1 + Math.floor((level - 40) / 50)) : 0;
+  const numWormholes = level >= 50 ? Math.min(2, 1 + Math.floor((level - 50) / 60)) : 0;
 
-  const takenIndices = new Set([0, FINISH]);
+  const takenIndices = new Set([0, finish]);
 
   function getUniqueIdx() {
     for (let attempt = 0; attempt < 100; attempt++) {
-      const idx = 3 + Math.floor(nextRand() * (FINISH - 5));
+      const idx = 3 + Math.floor(nextRand() * (finish - 5));
       if (!takenIndices.has(idx)) {
         takenIndices.add(idx);
         return idx;
@@ -679,19 +902,38 @@ function buildBoardForLevel(level) {
     return -1;
   }
 
-  // Generate bonuses, traps, resets, freezes, shields, wormholes
+  // Generate bonuses, traps, resets, freezes, shields, wormholes based on unlock level
   for (let b = 0; b < numBonuses; b++) {
     const idx = getUniqueIdx();
     if (idx !== -1) {
-      const bonusVal = nextRand() < 0.5 ? 5 : 10; // ONE call, used for both label AND effect
+      const bonusVal = nextRand() < 0.5 ? 5 : 10;
       gameState.levelSpecials[idx] = { type: "bonus", label: `⚡ +${bonusVal}`, effect: bonusVal, color: "#10e394" };
     }
   }
-  for (let t = 0; t < numTraps; t++) { const idx = getUniqueIdx(); if (idx !== -1) { const vals = [-2, -3, -5, -8, -10]; const val = vals[Math.floor(nextRand() * Math.min(5, 1+Math.floor(level/100)))]; gameState.levelSpecials[idx] = { type: "trap", label: `💀 ${val}`, effect: val, color: "#ff7e36" }; } }
-  for (let r = 0; r < numResets; r++) { const idx = getUniqueIdx(); if (idx !== -1) gameState.levelSpecials[idx] = { type: "reset", label: "💥 RESET", effect: -idx, color: "#ff3a5c" }; }
-  for (let f = 0; f < numFreezes; f++) { const idx = getUniqueIdx(); if (idx !== -1) gameState.levelSpecials[idx] = { type: "freeze", label: "❄️ FREEZE", effect: 0, color: "#00b8ff" }; }
-  for (let s = 0; s < numShields; s++) { const idx = getUniqueIdx(); if (idx !== -1) gameState.levelSpecials[idx] = { type: "shield", label: "🛡️ SHIELD", effect: 0, color: "#00e1ff" }; }
-  for (let w = 0; w < numWormholes; w++) { const idx = getUniqueIdx(); if (idx !== -1) gameState.levelSpecials[idx] = { type: "wormhole", label: "🌌 WORMHOLE", effect: 0, color: "#9d00ff" }; }
+  for (let t = 0; t < numTraps; t++) { 
+    const idx = getUniqueIdx(); 
+    if (idx !== -1) { 
+      const vals = [-2, -3, -5, -8, -10]; 
+      const val = vals[Math.floor(nextRand() * Math.min(5, 1 + Math.floor(level / 50)))]; 
+      gameState.levelSpecials[idx] = { type: "trap", label: `💀 ${val}`, effect: val, color: "#ff7e36" }; 
+    } 
+  }
+  for (let r = 0; r < numResets; r++) { 
+    const idx = getUniqueIdx(); 
+    if (idx !== -1) gameState.levelSpecials[idx] = { type: "reset", label: "💥 RESET", effect: -idx, color: "#ff3a5c" }; 
+  }
+  for (let f = 0; f < numFreezes; f++) { 
+    const idx = getUniqueIdx(); 
+    if (idx !== -1) gameState.levelSpecials[idx] = { type: "freeze", label: "❄️ FREEZE", effect: 0, color: "#00b8ff" }; 
+  }
+  for (let s = 0; s < numShields; s++) { 
+    const idx = getUniqueIdx(); 
+    if (idx !== -1) gameState.levelSpecials[idx] = { type: "shield", label: "🛡️ SHIELD", effect: 0, color: "#00e1ff" }; 
+  }
+  for (let w = 0; w < numWormholes; w++) { 
+    const idx = getUniqueIdx(); 
+    if (idx !== -1) gameState.levelSpecials[idx] = { type: "wormhole", label: "🌌 WORMHOLE", effect: 0, color: "#9d00ff" }; 
+  }
 
   // Auto-Scale to prevent cramping using perfect grid distances
   const TILE_SPACING = 85;
@@ -704,7 +946,7 @@ function buildBoardForLevel(level) {
   gameState.virtualWidth = (gridWidth * TILE_SPACING) + paddingX * 2;
   gameState.virtualHeight = (gridHeight * TILE_SPACING) + paddingY * 2;
   
-  for (let i = 0; i <= FINISH; i++) {
+  for (let i = 0; i <= finish; i++) {
     const px = paddingX + (gridPts[i].x - gridData.minX) * TILE_SPACING;
     const py = paddingY + (gridPts[i].y - gridData.minY) * TILE_SPACING;
     
@@ -720,7 +962,7 @@ function buildBoardForLevel(level) {
       type = "start";
       label = "START";
       color = "#00b8ff";
-    } else if (i === FINISH) {
+    } else if (i === finish) {
       type = "finish";
     }
 
@@ -855,43 +1097,142 @@ function drawBoardBackgroundDecor(overflow = 0) {
   const W = canvas.width;
   const H = canvas.height + overflow * 2;
   const offY = -overflow;
+  const time = Date.now() * 0.0008;
 
-  // Deep background (covers panning area)
   ctx.save();
+
+  // 1. Deep Celestial Sapphire Base Gradient (Calming & Relaxing)
   const bgGrad = ctx.createLinearGradient(0, offY, W, H + offY);
-  bgGrad.addColorStop(0, "#07080f");
-  bgGrad.addColorStop(0.5, "#0a0c18");
-  bgGrad.addColorStop(1, "#07080f");
+  bgGrad.addColorStop(0, "#040816");
+  bgGrad.addColorStop(0.3, "#081432");
+  bgGrad.addColorStop(0.65, "#0A183D");
+  bgGrad.addColorStop(1, "#030715");
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, offY, W, H);
 
-  // Ambient purple radial glow top-right
-  ctx.save();
-  const p1 = ctx.createRadialGradient(W * 0.8, H * 0.1 + offY, 0, W * 0.8, H * 0.1 + offY, W * 0.6);
-  p1.addColorStop(0, "rgba(200,80,255,0.1)");
-  p1.addColorStop(1, "transparent");
-  ctx.fillStyle = p1;
+  // 2. Soothing Aurora & Soft Nebulae Waves
+  // Celestial Violet Aurora (Top Soft Glow)
+  const nebViolet = ctx.createRadialGradient(
+    W * 0.75 + Math.sin(time * 0.5) * 20, 
+    H * 0.2 + offY + Math.cos(time * 0.6) * 15, 
+    20, 
+    W * 0.75, 
+    H * 0.2 + offY, 
+    W * 0.7
+  );
+  nebViolet.addColorStop(0, "rgba(125, 75, 255, 0.16)");
+  nebViolet.addColorStop(0.5, "rgba(100, 60, 220, 0.06)");
+  nebViolet.addColorStop(1, "transparent");
+  ctx.fillStyle = nebViolet;
   ctx.fillRect(0, offY, W, H);
+
+  // Calming Cyan/Aquamarine Glow (Center-Left)
+  const nebCyan = ctx.createRadialGradient(
+    W * 0.25 + Math.cos(time * 0.4) * 25, 
+    H * 0.55 + offY + Math.sin(time * 0.5) * 20, 
+    15, 
+    W * 0.25, 
+    H * 0.55 + offY, 
+    W * 0.65
+  );
+  nebCyan.addColorStop(0, "rgba(0, 217, 255, 0.14)");
+  nebCyan.addColorStop(0.5, "rgba(22, 139, 255, 0.05)");
+  nebCyan.addColorStop(1, "transparent");
+  ctx.fillStyle = nebCyan;
+  ctx.fillRect(0, offY, W, H);
+
+  // Deep Indigo/Teal Ambient Pool (Bottom Right)
+  const nebTeal = ctx.createRadialGradient(
+    W * 0.7 + Math.sin(time * 0.3) * 15, 
+    H * 0.85 + offY, 
+    20, 
+    W * 0.7, 
+    H * 0.85 + offY, 
+    W * 0.6
+  );
+  nebTeal.addColorStop(0, "rgba(16, 185, 129, 0.09)");
+  nebTeal.addColorStop(0.5, "rgba(6, 95, 70, 0.03)");
+  nebTeal.addColorStop(1, "transparent");
+  ctx.fillStyle = nebTeal;
+  ctx.fillRect(0, offY, W, H);
+
+  // 3. Subtle Relaxing Silk Grid / Constellation Guide Lines
+  ctx.strokeStyle = "rgba(0, 217, 255, 0.025)";
+  ctx.lineWidth = 1;
+  const gridSize = 46;
+  for (let x = 0; x < W; x += gridSize) {
+    ctx.beginPath();
+    ctx.moveTo(x, offY);
+    ctx.lineTo(x, H + offY);
+    ctx.stroke();
+  }
+  for (let y = offY; y < H + offY; y += gridSize) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(W, y);
+    ctx.stroke();
+  }
+
+  // 4. Undulating Aurora Ribbons (Silky ambient glow)
+  ctx.save();
+  for (let r = 0; r < 2; r++) {
+    ctx.beginPath();
+    const ribbonBaseY = offY + H * (0.35 + r * 0.32);
+    ctx.moveTo(0, ribbonBaseY);
+    for (let px = 0; px <= W; px += 20) {
+      const waveY = Math.sin((px * 0.008) + (time * 1.2) + (r * 2)) * 18 +
+                    Math.cos((px * 0.015) - (time * 0.8)) * 10;
+      ctx.lineTo(px, ribbonBaseY + waveY);
+    }
+    ctx.lineTo(W, H + offY);
+    ctx.lineTo(0, H + offY);
+    ctx.closePath();
+
+    const ribbonGrad = ctx.createLinearGradient(0, ribbonBaseY - 20, 0, ribbonBaseY + 60);
+    if (r === 0) {
+      ribbonGrad.addColorStop(0, "rgba(0, 217, 255, 0.04)");
+      ribbonGrad.addColorStop(1, "transparent");
+    } else {
+      ribbonGrad.addColorStop(0, "rgba(139, 77, 255, 0.035)");
+      ribbonGrad.addColorStop(1, "transparent");
+    }
+    ctx.fillStyle = ribbonGrad;
+    ctx.fill();
+  }
   ctx.restore();
 
-  // Ambient blue radial glow bottom-left
-  ctx.save();
-  const p2 = ctx.createRadialGradient(W * 0.15, H * 0.85 + offY, 0, W * 0.15, H * 0.85 + offY, W * 0.5);
-  p2.addColorStop(0, "rgba(0,184,255,0.08)");
-  p2.addColorStop(1, "transparent");
-  ctx.fillStyle = p2;
-  ctx.fillRect(0, offY, W, H);
-  ctx.restore();
+  // 5. Gentle Floating Stardust & Shimmering Constellations
+  for (let i = 0; i < 48; i++) {
+    const seedX = ((i * 79 + 31) % W);
+    const driftY = (time * 10 * ((i % 3) + 1)) % H;
+    const seedY = ((i * 137 + driftY) % H) + offY;
+    const pulse = 0.35 + 0.65 * Math.sin(time * 2.2 + i * 1.5);
+    const starR = (i % 6 === 0) ? 1.6 : (i % 4 === 0 ? 1.2 : 0.75);
 
-  // Dot grid
-  ctx.fillStyle = "rgba(255,255,255,0.025)";
-  for (let x = 20; x < W; x += 36) {
-    for (let y = offY + 20; y < H + offY; y += 36) {
+    ctx.beginPath();
+    ctx.arc(seedX, seedY, starR, 0, Math.PI * 2);
+    if (i % 5 === 0) {
+      ctx.fillStyle = `rgba(130, 215, 255, ${pulse * 0.85})`;
+    } else if (i % 7 === 0) {
+      ctx.fillStyle = `rgba(195, 160, 255, ${pulse * 0.8})`;
+    } else {
+      ctx.fillStyle = `rgba(255, 255, 255, ${pulse * 0.75})`;
+    }
+    ctx.fill();
+
+    // Occasional soft cross shimmer
+    if (i % 11 === 0) {
+      ctx.strokeStyle = `rgba(255, 255, 255, ${pulse * 0.35})`;
+      ctx.lineWidth = 0.7;
       ctx.beginPath();
-      ctx.arc(x, y, 0.8, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.moveTo(seedX - 3.5, seedY);
+      ctx.lineTo(seedX + 3.5, seedY);
+      ctx.moveTo(seedX, seedY - 3.5);
+      ctx.lineTo(seedX, seedY + 3.5);
+      ctx.stroke();
     }
   }
+
   ctx.restore();
 }
 
@@ -939,111 +1280,126 @@ function drawTrail() {
 }
 
 function drawSpaces() {
-  const R = 17; // tile radius
+  const TILE_W = 38;
+  const TILE_H = 38;
+  const CORNER_R = 9;
 
   gameState.spaces.forEach((space, index) => {
     ctx.save();
     const isSpecial = space.type !== "normal";
 
-    // --- Drop shadow ---
+    // 1. Ground soft drop shadow
+    ctx.save();
     ctx.beginPath();
-    ctx.arc(space.x, space.y + 3, R, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(0,0,0,0.45)";
+    ctx.ellipse(space.x, space.y + 10, TILE_W / 2 + 2, 7, 0, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+    ctx.fill();
+    ctx.restore();
+
+    // 2. Tile colors & glowing style
+    let mainColor, rimColor, glowColor;
+    if (space.type === "start") {
+      mainColor = "#20E878"; rimColor = "#77FFAE"; glowColor = "rgba(32, 232, 120, 0.7)";
+    } else if (space.type === "finish") {
+      mainColor = "#FFC928"; rimColor = "#FFF385"; glowColor = "rgba(255, 201, 40, 0.8)";
+    } else if (space.type === "bonus") {
+      mainColor = "#00D9FF"; rimColor = "#9EFAFF"; glowColor = "rgba(0, 217, 255, 0.75)";
+    } else if (space.type === "trap") {
+      mainColor = "#FF7A00"; rimColor = "#FFA856"; glowColor = "rgba(255, 122, 0, 0.75)";
+    } else if (space.type === "reset") {
+      mainColor = "#FF4058"; rimColor = "#FFA4B0"; glowColor = "rgba(255, 64, 88, 0.8)";
+    } else if (space.type === "freeze") {
+      mainColor = "#168BFF"; rimColor = "#82C3FF"; glowColor = "rgba(22, 139, 255, 0.7)";
+    } else if (space.type === "shield") {
+      mainColor = "#00D9FF"; rimColor = "#FFFFFF"; glowColor = "rgba(0, 217, 255, 0.85)";
+    } else if (space.type === "wormhole") {
+      mainColor = "#8B4DFF"; rimColor = "#D4B0FF"; glowColor = "rgba(139, 77, 255, 0.8)";
+    } else {
+      mainColor = "#101A32"; rimColor = "rgba(0, 217, 255, 0.2)"; glowColor = null;
+    }
+
+    const x = space.x - TILE_W / 2;
+    const y = space.y - TILE_H / 2;
+    const depth = 5;
+
+    // Bottom bevel depth block
+    ctx.beginPath();
+    ctx.roundRect(x, y + depth, TILE_W, TILE_H, CORNER_R);
+    ctx.fillStyle = isSpecial ? darken(mainColor, 60) : "#080E1C";
     ctx.fill();
 
-    // --- Glow for specials ---
+    // Top face with neon glow if special
+    ctx.beginPath();
+    ctx.roundRect(x, y, TILE_W, TILE_H, CORNER_R);
     if (isSpecial) {
-      ctx.shadowBlur = 18;
-      ctx.shadowColor = space.color;
+      ctx.shadowBlur = 16;
+      ctx.shadowColor = glowColor;
     } else {
       ctx.shadowBlur = 0;
     }
 
-    // --- Tile fill ---
-    let fillColor;
-    if (space.type === "start")  fillColor = "#0dffb0";
-    else if (space.type === "finish") fillColor = "#ffcc00";
-    else if (space.type === "bonus")  fillColor = "#0dffb0";
-    else if (space.type === "trap")   fillColor = "#ff6b00";
-    else if (space.type === "reset")  fillColor = "#ff3a5c";
-    else if (space.type === "freeze") fillColor = "#00b8ff";
-    else fillColor = null;
-
-    if (fillColor) {
-      // Filled arcade tile
-      ctx.beginPath();
-      ctx.arc(space.x, space.y, R, 0, Math.PI * 2);
-      const g = ctx.createRadialGradient(space.x - 4, space.y - 5, 1, space.x, space.y, R);
-      g.addColorStop(0, lighten(fillColor, 60));
-      g.addColorStop(0.5, fillColor);
-      g.addColorStop(1, darken(fillColor, 40));
-      ctx.fillStyle = g;
-      ctx.fill();
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = "rgba(255,255,255,0.6)";
-      ctx.stroke();
-      
-      // Draw freeze snowflake (if it's a freeze tile)
-      if (space.type === "freeze") {
-        ctx.save();
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.font = "bold 14px 'Font Awesome 6 Free'";
-        ctx.fillStyle = "#fff";
-        ctx.fillText("\uf2dc", space.x, space.y); // snowflake
-        ctx.restore();
-      }
+    // Top face gradient
+    const topGrad = ctx.createLinearGradient(x, y, x, y + TILE_H);
+    if (isSpecial) {
+      topGrad.addColorStop(0, lighten(mainColor, 40));
+      topGrad.addColorStop(0.5, mainColor);
+      topGrad.addColorStop(1, darken(mainColor, 25));
     } else {
-      // Normal tile
-      ctx.beginPath();
-      ctx.arc(space.x, space.y, R, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(18,20,38,0.92)";
-      ctx.fill();
-      ctx.lineWidth = 1.5;
-      ctx.strokeStyle = "rgba(255,255,255,0.065)";
-      ctx.stroke();
+      topGrad.addColorStop(0, "#19284D");
+      topGrad.addColorStop(0.5, "#101A32");
+      topGrad.addColorStop(1, "#0B1224");
     }
+    ctx.fillStyle = topGrad;
+    ctx.fill();
 
+    // Glowing border rim
+    ctx.lineWidth = isSpecial ? 2 : 1.2;
+    ctx.strokeStyle = rimColor;
+    ctx.stroke();
     ctx.restore();
 
-    // --- Label text ---
+    // 3. Icons / Numbers rendering
     ctx.save();
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
     if (space.type === "start") {
-      ctx.font = "bold 7.5px Nunito";
-      ctx.fillStyle = "#07080f";
+      ctx.font = "900 8px 'Outfit', sans-serif";
+      ctx.fillStyle = "#050816";
       ctx.fillText("START", space.x, space.y);
     } else if (space.type === "finish") {
-      ctx.font = "bold 8px Nunito";
-      ctx.fillStyle = "#07080f";
-      ctx.fillText("GOAL", space.x, space.y);
+      ctx.font = "900 13px 'Font Awesome 6 Free'";
+      ctx.fillStyle = "#050816";
+      ctx.fillText("\uf091", space.x, space.y); // Trophy
     } else if (space.type === "bonus") {
       const val = (space.label.match(/\d+/) || [""])[0];
-      ctx.font = "bold 10px Nunito";
-      ctx.fillStyle = "#07080f";
+      ctx.font = "900 10px 'Fredoka One', cursive";
+      ctx.fillStyle = "#050816";
       ctx.fillText("+" + val, space.x, space.y);
     } else if (space.type === "trap") {
       const val = (space.label.match(/-?\d+/) || [""])[0];
-      ctx.font = "bold 10px Nunito";
-      ctx.fillStyle = "#fff";
+      ctx.font = "900 10px 'Fredoka One', cursive";
+      ctx.fillStyle = "#FFFFFF";
       ctx.fillText(val, space.x, space.y);
     } else if (space.type === "reset") {
-      ctx.font = "bold 7px Nunito";
-      ctx.fillStyle = "#fff";
-      ctx.fillText("BACK", space.x, space.y);
+      ctx.font = "900 7.5px 'Fredoka One', cursive";
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillText("RESET", space.x, space.y);
     } else if (space.type === "shield") {
-      ctx.font = "12px FontAwesome";
-      ctx.fillStyle = "#07080f";
-      ctx.fillText("🛡️", space.x, space.y + 1); // Slight offset for emoji
+      ctx.font = "900 13px 'Font Awesome 6 Free'";
+      ctx.fillStyle = "#050816";
+      ctx.fillText("\uf3ed", space.x, space.y); // shield-halved
     } else if (space.type === "wormhole") {
-      ctx.font = "12px FontAwesome";
-      ctx.fillStyle = "#fff";
-      ctx.fillText("🌌", space.x, space.y + 1);
-    } else if (space.type !== "freeze") {
-      ctx.font = "600 10px Nunito";
-      ctx.fillStyle = "rgba(255,255,255,0.18)";
+      ctx.font = "900 13px 'Font Awesome 6 Free'";
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillText("\uf5d2", space.x, space.y); // atom / portal swirl
+    } else if (space.type === "freeze") {
+      ctx.font = "900 12px 'Font Awesome 6 Free'";
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillText("\uf2dc", space.x, space.y); // snowflake
+    } else {
+      ctx.font = "800 10px 'Outfit', sans-serif";
+      ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
       ctx.fillText(index.toString(), space.x, space.y);
     }
     ctx.restore();
@@ -1098,13 +1454,15 @@ function updateAndDrawTokens() {
 
     const isActive = gameState.currentPlayer === idx && !gameState.gameOver;
     const TOKEN_R = 16;
+    const bob = Math.sin((Date.now() / 250) + (idx * Math.PI)) * 2;
+    const drawY = player.visualY + bob;
 
     ctx.save();
 
     // Big outer glow ring for active player
     if (isActive) {
       ctx.beginPath();
-      ctx.arc(player.visualX, player.visualY, TOKEN_R + 7, 0, Math.PI * 2);
+      ctx.arc(player.visualX, drawY, TOKEN_R + 7, 0, Math.PI * 2);
       ctx.strokeStyle = player.color + "55";
       ctx.lineWidth = 4;
       ctx.shadowBlur = 20;
@@ -1115,12 +1473,12 @@ function updateAndDrawTokens() {
     // Shield Aura
     if (player.hasShield) {
       ctx.beginPath();
-      ctx.arc(player.visualX, player.visualY, TOKEN_R + 10, 0, Math.PI * 2);
-      ctx.strokeStyle = "#00e1ff";
-      ctx.lineWidth = 2;
+      ctx.arc(player.visualX, drawY, TOKEN_R + 10, 0, Math.PI * 2);
+      ctx.strokeStyle = "#00d9ff";
+      ctx.lineWidth = 2.5;
       ctx.setLineDash([4, 4]);
-      ctx.shadowBlur = 15;
-      ctx.shadowColor = "#00e1ff";
+      ctx.shadowBlur = 16;
+      ctx.shadowColor = "#00d9ff";
       ctx.stroke();
       ctx.setLineDash([]);
     }
@@ -1128,7 +1486,7 @@ function updateAndDrawTokens() {
     // Drop shadow
     ctx.shadowBlur = 0;
     ctx.beginPath();
-    ctx.arc(player.visualX, player.visualY + 5, TOKEN_R, 0, Math.PI * 2);
+    ctx.ellipse(player.visualX, player.visualY + 12, TOKEN_R, 6, 0, 0, Math.PI * 2);
     ctx.fillStyle = "rgba(0,0,0,0.5)";
     ctx.fill();
 
@@ -1138,8 +1496,8 @@ function updateAndDrawTokens() {
 
     // 3D sphere gradient
     const grad = ctx.createRadialGradient(
-      player.visualX - 5, player.visualY - 5, 1,
-      player.visualX, player.visualY, TOKEN_R
+      player.visualX - 5, drawY - 5, 1,
+      player.visualX, drawY, TOKEN_R
     );
     grad.addColorStop(0, "#ffffff");
     grad.addColorStop(0.25, lighten(player.color, 50));
@@ -1147,7 +1505,7 @@ function updateAndDrawTokens() {
     grad.addColorStop(1, darken(player.color, 60));
 
     ctx.beginPath();
-    ctx.arc(player.visualX, player.visualY, TOKEN_R, 0, Math.PI * 2);
+    ctx.arc(player.visualX, drawY, TOKEN_R, 0, Math.PI * 2);
     ctx.fillStyle = grad;
     ctx.fill();
 
@@ -1165,14 +1523,14 @@ function updateAndDrawTokens() {
     ctx.textBaseline = "middle";
     ctx.font = '900 13px "Font Awesome 6 Free"';
     ctx.fillStyle = "#ffffff";
-    ctx.fillText(player.emoji, player.visualX, player.visualY + 1);
+    ctx.fillText(player.emoji, player.visualX, drawY + 1);
     ctx.restore();
 
     // Embers spawned at token when player is active
     if (gameState.currentPlayer === idx && !gameState.gameOver && Math.random() < 0.12) {
       gameState.particles.push({
         x: player.visualX,
-        y: player.visualY,
+        y: drawY,
         dx: (Math.random() - 0.5) * 1.5,
         dy: -1 - Math.random() * 1.5,
         color: player.color,
@@ -1224,9 +1582,28 @@ function updateHUD() {
   redPosition.textContent = p1.position === 0 ? "START" : p1.position === FINISH ? "GOAL" : `#${p1.position}`;
   bluePosition.textContent = p2.position === 0 ? "START" : p2.position === FINISH ? "GOAL" : `#${p2.position}`;
 
-  // Progress Bar width calculations
-  redProgress.style.width = `${(p1.position / FINISH) * 100}%`;
-  blueProgress.style.width = `${(p2.position / FINISH) * 100}%`;
+  // Progress Bar calculations
+  const p1Pct = (p1.position / FINISH) * 100;
+  const p2Pct = (p2.position / FINISH) * 100;
+  if (redProgress) redProgress.style.width = `${p1Pct}%`;
+  if (blueProgress) blueProgress.style.width = `${p2Pct}%`;
+
+  if (pinRedRacer) pinRedRacer.style.left = `${Math.min(92, (p1.position / FINISH) * 92)}%`;
+  if (pinBlueRacer) pinBlueRacer.style.left = `${Math.min(92, (p2.position / FINISH) * 92)}%`;
+  if (raceTrackFill) raceTrackFill.style.width = `${(Math.max(p1.position, p2.position) / FINISH) * 100}%`;
+
+  // Active shields in HUD
+  if (hudShieldCount) {
+    hudShieldCount.textContent = (p1.hasShield ? 1 : 0) + (p2.hasShield ? 1 : 0);
+  }
+
+  // Level badge and HUD level title
+  const activeLevel = gameState.mode === "ai" ? gameState.currentLevel : gameState.selectedShapeLevel;
+  if (gameHudLevel) {
+    gameHudLevel.textContent = gameState.mode === "ai" ? `Level ${activeLevel}` : `Arena L${activeLevel}`;
+  }
+  const lvlBadge = document.getElementById("levelBadge");
+  if (lvlBadge) lvlBadge.textContent = `LVL ${activeLevel}`;
 
   // Text values
   redNameCard.textContent = p1.name;
@@ -1235,28 +1612,102 @@ function updateHUD() {
   blueAvatarBadge.innerHTML = p2.html;
   
   // Shield badges
-  document.getElementById("redShieldBadge").style.display = p1.hasShield ? "inline-block" : "none";
-  document.getElementById("blueShieldBadge").style.display = p2.hasShield ? "inline-block" : "none";
+  const redShield = document.getElementById("redShieldBadge");
+  if (redShield) redShield.style.display = p1.hasShield ? "inline-block" : "none";
+  const blueShield = document.getElementById("blueShieldBadge");
+  if (blueShield) blueShield.style.display = p2.hasShield ? "inline-block" : "none";
 
   // Turn status banner
   const activePlayer = gameState.players[gameState.currentPlayer];
-  turnBullet.style.color = activePlayer.color;
-  turnName.innerHTML = `${activePlayer.html} ${activePlayer.name}'S TURN`;
+  if (turnBullet) {
+    turnBullet.style.background = activePlayer.color;
+    turnBullet.style.boxShadow = `0 0 8px ${activePlayer.color}`;
+  }
+  if (turnName) {
+    turnName.innerHTML = `${activePlayer.html} ${activePlayer.name}'S TURN`;
+  }
 
   if (gameState.gameOver) {
-    turnStatus.textContent = "GAME OVER";
+    if (turnStatus) turnStatus.textContent = "GAME OVER";
   } else if (gameState.busy) {
-    turnStatus.textContent = "MOVING...";
+    if (turnStatus) turnStatus.textContent = "MOVING...";
   } else {
-    turnStatus.textContent = gameState.mode === "ai" && gameState.currentPlayer === 1 ? "COMPUTER THINKING..." : "AWAITING ROLL";
+    if (turnStatus) {
+      turnStatus.textContent = gameState.mode === "ai" && gameState.currentPlayer === 1 ? "AI THINKING..." : "TAP DICE";
+    }
   }
 
-  // Level badge
-  const lvlBadge = document.getElementById("levelBadge");
-  if (lvlBadge) {
-    const lvl = gameState.mode === "ai" ? gameState.currentLevel : gameState.selectedShapeLevel;
-    lvlBadge.textContent = `LVL ${lvl}`;
+  // Tactical "SET TRAP" button state
+  if (btnSetTrap) {
+    const activeLevel = gameState.mode === "ai" ? gameState.currentLevel : gameState.selectedShapeLevel;
+    const isHuman = (gameState.currentPlayer === 0) || (gameState.mode === "pvp");
+    
+    // Feature unlocks at Level 10+
+    if (activeLevel >= 10 && !gameState.gameOver) {
+      btnSetTrap.style.display = "flex";
+      const charges = activePlayer.trapCharges || 0;
+      if (trapChargesBadge) trapChargesBadge.textContent = charges;
+      
+      const canUse = isHuman && charges > 0 && !gameState.busy && !activePlayer.hasUsedTrapThisTurn;
+      btnSetTrap.classList.toggle("disabled", !canUse);
+    } else {
+      btnSetTrap.style.display = "none";
+    }
   }
+}
+
+async function activateSetTrap(isAi = false) {
+  if (gameState.busy || gameState.gameOver) return;
+  const activeLevel = gameState.mode === "ai" ? gameState.currentLevel : gameState.selectedShapeLevel;
+  if (activeLevel < 10) return;
+
+  const player = gameState.players[gameState.currentPlayer];
+  const opponentIdx = gameState.currentPlayer === 0 ? 1 : 0;
+  const opponent = gameState.players[opponentIdx];
+
+  if ((player.trapCharges || 0) <= 0 || player.hasUsedTrapThisTurn) return;
+
+  // Decide target tile: place right behind opponent, or at opponent's next step
+  let targetTile = Math.max(1, opponent.position - 1);
+  if (targetTile === 0) targetTile = Math.min(FINISH - 1, opponent.position + 1);
+  if (targetTile >= FINISH) targetTile = FINISH - 1;
+
+  // If tile already has a finish or start, nudge
+  if (targetTile === 0 || targetTile === FINISH) targetTile = Math.max(1, FINISH - 2);
+
+  // Consume charge
+  player.trapCharges--;
+  player.hasUsedTrapThisTurn = true;
+
+  // Place Trap on board
+  const trapVal = -3;
+  gameState.levelSpecials[targetTile] = {
+    type: "trap",
+    label: `💀 ${trapVal}`,
+    effect: trapVal,
+    color: "#ff7a00"
+  };
+
+  if (gameState.spaces[targetTile]) {
+    gameState.spaces[targetTile].type = "trap";
+    gameState.spaces[targetTile].label = `💀 ${trapVal}`;
+    gameState.spaces[targetTile].color = "#ff7a00";
+    
+    // Spawn burst effects at target tile
+    spawnParticles(gameState.spaces[targetTile].x, gameState.spaces[targetTile].y, "#ff7a00", 25);
+  }
+
+  GameSFX.play("trap");
+  triggerScreenShake(8);
+
+  const actorName = isAi ? "AI" : player.name;
+  showToast(`💥 ${actorName} deployed a trap at tile #${targetTile}!`);
+  floatingText(`TRAP DEPLOYED! 💀`, "#ff7a00", window.innerWidth / 2, window.innerHeight / 2 - 40);
+
+  mainMessage.textContent = `${actorName} Set a Trap!`;
+  hint.textContent = `Hazard dropped at space #${targetTile}`;
+
+  updateHUD();
 }
 
 function logAction(text, type = "normal") {
@@ -1558,6 +2009,7 @@ async function resolveSpecialTile(player) {
 
   if (spec.type === "shield") {
     player.hasShield = true;
+    gameState.shieldsCollected++;
     updateHUD();
     mainMessage.textContent = "SHIELD EQUIPPED! 🛡️";
     hint.textContent = "You are protected from the next trap or knockout.";
@@ -1586,6 +2038,7 @@ async function resolveSpecialTile(player) {
 
   if (spec.effect > 0) {
     // BONUS TILE
+    gameState.coinsEarned += (spec.effect * 5);
     mainMessage.textContent = "BONUS! ⚡";
     hint.textContent = `Propelling forward +${spec.effect} spaces!`;
     showToast(`⚡ BONUS! +${spec.effect}`);
@@ -1678,11 +2131,14 @@ function switchTurn() {
   // Move to next player
   gameState.currentPlayer = gameState.currentPlayer === 0 ? 1 : 0;
   
+  // Reset turn-specific action limits
+  const activePlayer = gameState.players[gameState.currentPlayer];
+  activePlayer.hasUsedTrapThisTurn = false;
+
   // Check if they are frozen
-  const nextPlayer = gameState.players[gameState.currentPlayer];
-  if (nextPlayer.frozenTurns > 0) {
-    nextPlayer.frozenTurns--;
-    showToast(`❄️ ${nextPlayer.name} is frozen. Skipping turn.`);
+  if (activePlayer.frozenTurns > 0) {
+    activePlayer.frozenTurns--;
+    showToast(`❄️ ${activePlayer.name} is frozen. Skipping turn.`);
     floatingText(`FROZEN!`, "#00b8ff", window.innerWidth / 2, window.innerHeight / 2);
     
     // Immediately skip this turn and switch again
@@ -1696,7 +2152,6 @@ function switchTurn() {
   
   diceFace.textContent = "?";
   
-  const activePlayer = gameState.players[gameState.currentPlayer];
   mainMessage.textContent = `${activePlayer.name}'s Turn`;
   hint.textContent = "Roll the dice to navigate.";
 
@@ -1717,7 +2172,17 @@ async function triggerComputerTurn() {
   hint.textContent = "Calculating vectors...";
   
   // Artificial thinking delay
-  await wait(1200 + Math.random() * 800);
+  await wait(900 + Math.random() * 500);
+
+  // AI Tactical Trap Placement: if level >= 10 and player 0 is ahead, deploy trap with 65% chance
+  const aiPlayer = gameState.players[1];
+  const humanPlayer = gameState.players[0];
+  const activeLevel = gameState.mode === "ai" ? gameState.currentLevel : gameState.selectedShapeLevel;
+
+  if (activeLevel >= 10 && (aiPlayer.trapCharges || 0) > 0 && humanPlayer.position > aiPlayer.position && Math.random() < 0.65) {
+    await activateSetTrap(true);
+    await wait(600);
+  }
   
   if (!gameState.gameOver) {
     await triggerRoll();
@@ -1725,7 +2190,7 @@ async function triggerComputerTurn() {
 }
 
 /* ==========================================================================
-   VICTORY GAME OVER
+   VICTORY & GAME OVER PRESENTATION (Visual Reference Panels 4, 5, 6)
    ========================================================================== */
 function triggerVictory(winner) {
   gameState.gameOver = true;
@@ -1736,11 +2201,6 @@ function triggerVictory(winner) {
   mainMessage.textContent = "🏆 VICTORY!";
   hint.textContent = `${winner.name} wins the match!`;
   
-  winnerTitle.textContent = `${winner.name} WINS!`;
-  winnerTitle.style.color = winner.color;
-
-  logAction(`🏆 <strong>${winner.name}</strong> reached the GOAL and won the game!`, gameState.currentPlayer === 0 ? "red" : "blue");
-
   // Cumulative statistics updates
   gameState.stats.games++;
   if (gameState.currentPlayer === 0) {
@@ -1755,9 +2215,6 @@ function triggerVictory(winner) {
         
         logAction(`🏆 <strong>LEVEL UNLOCKED!</strong> Cleared Level ${activeLvl}! Shape is now unlocked for Local PVP.`, "knockout");
         showToast(`🏆 Level ${activeLvl} Cleared! Shape Unlocked!`);
-        
-        // Custom text inside modal
-        winnerTitle.innerHTML = `${winner.name} WINS!<br><span style="font-size:11px;color:var(--green);font-weight:800;letter-spacing:0.02em;">🏆 LEVEL ${activeLvl} CLEARED! PVP SHAPE UNLOCKED!</span>`;
       }
     }
   }
@@ -1765,41 +2222,105 @@ function triggerVictory(winner) {
 
   GameSFX.play("win");
 
-  // Show winning modal
-  modal.classList.add("show");
+  // Calculate elapsed match time
+  const elapsedSecs = Math.max(1, Math.floor((Date.now() - (gameState.matchStartTime || Date.now())) / 1000));
+  const mins = Math.floor(elapsedSecs / 60).toString().padStart(2, "0");
+  const secs = (elapsedSecs % 60).toString().padStart(2, "0");
+  const timeStr = `${mins}:${secs}`;
 
-  // Fire celebratory fireworks / sparks across the screen
-  for (let i = 0; i < 40; i++) {
-    setTimeout(() => {
-      const colors = ["#ffc93c", "#ff4760", "#2893ff", "#10e394", "#c026d3"];
-      const rx = Math.random() * canvas.width;
-      const ry = Math.random() * canvas.height * 0.7;
-      const randomColor = colors[Math.floor(Math.random() * colors.length)];
-      
-      spawnParticles(rx, ry, randomColor, 12);
-      triggerScreenShake(2);
-    }, i * 150);
-  }
+  const statValTime = document.getElementById("statValTime");
+  if (statValTime) statValTime.textContent = timeStr;
 
-  // Build context-sensitive modal buttons
+  const statValLevel = document.getElementById("statValLevel");
+  if (statValLevel) statValLevel.textContent = (gameState.mode === "ai" ? gameState.currentLevel : gameState.selectedShapeLevel);
+
+  const statValShields = document.getElementById("statValShields");
+  if (statValShields) statValShields.textContent = gameState.shieldsCollected;
+
+  gameState.coinsEarned = (gameState.coinsEarned || 0) + 100;
+  const statValCoins = document.getElementById("statValCoins");
+  if (statValCoins) statValCoins.textContent = gameState.coinsEarned;
+
+  const victoryHeader = document.getElementById("victoryHeader");
+  const defeatHeader = document.getElementById("defeatHeader");
+  const pvpVsHeader = document.getElementById("pvpVsHeader");
+  const winSub = document.getElementById("winSub");
+  const playAgainLabel = document.getElementById("playAgainLabel");
+  const nextLevelGameBtn = document.getElementById("nextLevelGameBtn");
+
   const isHumanWinner = (gameState.currentPlayer === 0);
   const isAiMode = (gameState.mode === "ai");
   const isNewLevelClear = isHumanWinner && isAiMode && (gameState.currentLevel >= gameState.highestClearedLevel);
 
-  // Update win subtitle
-  const winSub = document.getElementById("winSub");
-  if (winSub) winSub.textContent = isHumanWinner ? "You won! What's next?" : `${winner.name} wins this round!`;
+  if (isAiMode) {
+    if (isHumanWinner) {
+      // Panel 4: Solo Victory
+      if (victoryHeader) victoryHeader.style.display = "flex";
+      if (defeatHeader) defeatHeader.style.display = "none";
+      if (pvpVsHeader) pvpVsHeader.style.display = "none";
 
-  // Show / hide next level button
-  const nextLevelGameBtn = document.getElementById("nextLevelGameBtn");
-  if (nextLevelGameBtn) {
-    nextLevelGameBtn.style.display = (isNewLevelClear && gameState.currentLevel < 500) ? "flex" : "none";
+      winnerTitle.className = "win-title gold-glow";
+      winnerTitle.textContent = "YOU WIN!";
+      if (winSub) winSub.textContent = "Great job! You completed the race!";
+
+      if (playAgainBtn) playAgainBtn.classList.remove("red-mode");
+      if (playAgainLabel) playAgainLabel.textContent = isNewLevelClear ? "TRY SAME LEVEL" : "PLAY AGAIN";
+      if (nextLevelGameBtn) {
+        nextLevelGameBtn.style.display = (isNewLevelClear && gameState.currentLevel < 500) ? "flex" : "none";
+      }
+    } else {
+      // Panel 5: Defeat / Game Over
+      if (victoryHeader) victoryHeader.style.display = "none";
+      if (defeatHeader) defeatHeader.style.display = "flex";
+      if (pvpVsHeader) pvpVsHeader.style.display = "none";
+
+      const defeatTitle = document.getElementById("defeatTitle");
+      if (defeatTitle) defeatTitle.textContent = "GAME OVER";
+      const defeatSub = document.getElementById("defeatSub");
+      if (defeatSub) defeatSub.textContent = "Better luck next time!";
+
+      if (playAgainBtn) playAgainBtn.classList.add("red-mode");
+      if (playAgainLabel) playAgainLabel.textContent = "TRY AGAIN";
+      if (nextLevelGameBtn) nextLevelGameBtn.style.display = "none";
+    }
+  } else {
+    // Panel 6: Local PVP Winner
+    if (victoryHeader) victoryHeader.style.display = "flex";
+    if (defeatHeader) defeatHeader.style.display = "none";
+    if (pvpVsHeader) pvpVsHeader.style.display = "flex";
+
+    const pvpAvatarLeft = document.getElementById("pvpAvatarLeft");
+    const pvpLabelLeft = document.getElementById("pvpLabelLeft");
+    const pvpAvatarRight = document.getElementById("pvpAvatarRight");
+    const pvpLabelRight = document.getElementById("pvpLabelRight");
+    if (pvpAvatarLeft) pvpAvatarLeft.innerHTML = gameState.players[0].html;
+    if (pvpLabelLeft) pvpLabelLeft.textContent = gameState.players[0].name;
+    if (pvpAvatarRight) pvpAvatarRight.innerHTML = gameState.players[1].html;
+    if (pvpLabelRight) pvpLabelRight.textContent = gameState.players[1].name;
+
+    winnerTitle.className = "win-title gold-glow";
+    winnerTitle.textContent = `${winner.name} WINS!`;
+    if (winSub) winSub.textContent = "Well played! You're the champion!";
+
+    if (playAgainBtn) playAgainBtn.classList.remove("red-mode");
+    if (playAgainLabel) playAgainLabel.textContent = "PLAY AGAIN";
+    if (nextLevelGameBtn) nextLevelGameBtn.style.display = "none";
   }
 
-  // Update play again label based on context
-  const playAgainLabel = document.getElementById("playAgainLabel");
-  if (playAgainLabel) {
-    playAgainLabel.textContent = isHumanWinner ? "🔄 Try Same Level" : "🔄 Try Again";
+  // Show winning modal
+  modal.classList.add("show");
+
+  // Celebratory particles
+  for (let i = 0; i < 35; i++) {
+    setTimeout(() => {
+      const colors = ["#ffc928", "#ff4058", "#168bff", "#20e878", "#8b4dff"];
+      const rx = Math.random() * canvas.width;
+      const ry = Math.random() * canvas.height * 0.7;
+      const randomColor = colors[Math.floor(Math.random() * colors.length)];
+      
+      spawnParticles(rx, ry, randomColor, 10);
+      triggerScreenShake(2);
+    }, i * 140);
   }
 }
 
@@ -1811,7 +2332,7 @@ function resetGame(advanceLevel = false) {
     gameState.currentLevel = Math.min(500, gameState.currentLevel + 1);
   }
 
-  // Rebuild board for possibly new level
+  // Rebuild board for level
   buildBoard();
 
   // Set players position
@@ -1820,13 +2341,23 @@ function resetGame(advanceLevel = false) {
 
   // Clean visual coordinate positions
   const startSpace = gameState.spaces[0];
+  const activeLevel = gameState.mode === "ai" ? gameState.currentLevel : gameState.selectedShapeLevel;
+  const initialTrapCharges = activeLevel >= 10 ? 1 : 0;
+  
   gameState.players.forEach(p => {
     p.visualX = startSpace.x;
     p.visualY = startSpace.y;
     p.targetX = startSpace.x;
     p.targetY = startSpace.y;
     p.hasShield = false;
+    p.trapCharges = initialTrapCharges;
+    p.hasUsedTrapThisTurn = false;
   });
+
+  // Reset telemetry
+  gameState.matchStartTime = Date.now();
+  gameState.shieldsCollected = 0;
+  gameState.coinsEarned = 0;
 
   // Reset camera to bottom of board
   camera.y = canvas.height;
@@ -1850,9 +2381,8 @@ function resetGame(advanceLevel = false) {
 
   rollButton.classList.remove("disabled");
   modal.classList.remove("show");
+  if (pauseModal) pauseModal.classList.remove("show");
 
-  // Clean logs and post init log
-  logContainer.innerHTML = "";
   logAction(`🎮 New Game started in <strong>${gameState.mode === "ai" ? "VS AI" : "PVP"} Mode</strong>! Level: ${gameState.currentLevel}`);
   
   updateHUD();
@@ -1865,6 +2395,23 @@ function wait(ms) {
 /* ==========================================================================
    EVENT LISTENERS INITIALIZATION
    ========================================================================== */
+function syncAudioUI() {
+  const isMuted = GameSFX.isMuted();
+  const icon = isMuted ? '<i class="fa-solid fa-volume-xmark"></i>' : '<i class="fa-solid fa-volume-high"></i>';
+  if (muteBtn) muteBtn.innerHTML = icon;
+  if (homeMuteBtn) homeMuteBtn.innerHTML = icon;
+  if (modalSoundToggle) {
+    modalSoundToggle.innerHTML = icon;
+    modalSoundToggle.classList.toggle("active", !isMuted);
+  }
+}
+
+function handleToggleAudio() {
+  const isMuted = GameSFX.toggleMute();
+  syncAudioUI();
+  showToast(isMuted ? "Audio Muted" : "Audio Unmuted");
+}
+
 function initEvents() {
   // Dice Button Click
   rollButton.addEventListener("click", () => {
@@ -1873,18 +2420,30 @@ function initEvents() {
     triggerRoll();
   });
 
+  // Tactical Set Trap Button Click
+  if (btnSetTrap) {
+    btnSetTrap.addEventListener("click", () => {
+      if (gameState.mode === "ai" && gameState.currentPlayer === 1) return;
+      activateSetTrap(false);
+    });
+  }
+
   // Header and modal buttons
-  restartBtn.addEventListener("click", () => {
-    if (confirm("Reset current game? Progress will be lost.")) {
-      resetGame();
-    }
-  });
+  if (restartBtn) {
+    restartBtn.addEventListener("click", () => {
+      if (confirm("Reset current game? Progress will be lost.")) {
+        resetGame();
+      }
+    });
+  }
 
-  playAgainBtn.addEventListener("click", () => {
-    resetGame(false); // Same level
-  });
+  if (playAgainBtn) {
+    playAgainBtn.addEventListener("click", () => {
+      resetGame(false); // Same level
+    });
+  }
 
-  // Next Level button (shown after winning in AI mode)
+  // Next Level button
   const nextLevelGameBtn = document.getElementById("nextLevelGameBtn");
   if (nextLevelGameBtn) {
     nextLevelGameBtn.addEventListener("click", () => {
@@ -1892,25 +2451,75 @@ function initEvents() {
     });
   }
 
-  // Mute audio Toggle
-  muteBtn.addEventListener("click", () => {
-    const isMuted = GameSFX.toggleMute();
-    muteBtn.innerHTML = isMuted ? "🔈" : "🔊";
-    showToast(isMuted ? "Audio Muted" : "Audio Unmuted");
-  });
+  // Audio Toggles
+  if (muteBtn) muteBtn.addEventListener("click", handleToggleAudio);
+  if (homeMuteBtn) homeMuteBtn.addEventListener("click", handleToggleAudio);
+  if (modalSoundToggle) modalSoundToggle.addEventListener("click", handleToggleAudio);
+  syncAudioUI();
 
-  // Initialize Audio icon
-  muteBtn.innerHTML = GameSFX.isMuted() ? "🔈" : "🔊";
+  // Pause Modal Triggers (Visual Reference Panel 3)
+  if (btnPauseGame) {
+    btnPauseGame.addEventListener("click", () => {
+      if (pauseModal) pauseModal.classList.add("show");
+    });
+  }
+  if (btnResumeGame) {
+    btnResumeGame.addEventListener("click", () => {
+      if (pauseModal) pauseModal.classList.remove("show");
+    });
+  }
+  if (btnRestartGame) {
+    btnRestartGame.addEventListener("click", () => {
+      if (pauseModal) pauseModal.classList.remove("show");
+      resetGame();
+    });
+  }
+  if (btnPauseSettings) {
+    btnPauseSettings.addEventListener("click", () => {
+      if (pauseModal) pauseModal.classList.remove("show");
+      if (settingsModal) settingsModal.classList.add("show");
+    });
+  }
+  if (btnQuitToMenu) {
+    btnQuitToMenu.addEventListener("click", () => {
+      if (pauseModal) pauseModal.classList.remove("show");
+      if (gameScreen) gameScreen.style.display = "none";
+      if (homeScreen) homeScreen.style.display = "flex";
+    });
+  }
+
+  // Settings Modal Close
+  if (homeSettingsBtn) {
+    homeSettingsBtn.addEventListener("click", () => {
+      if (settingsModal) settingsModal.classList.add("show");
+    });
+  }
+  if (btnCloseSettings) {
+    btnCloseSettings.addEventListener("click", () => {
+      if (settingsModal) settingsModal.classList.remove("show");
+    });
+  }
+
+  // Return to Main Menu from Winner/Defeat Modal
+  if (btnReturnHome) {
+    btnReturnHome.addEventListener("click", () => {
+      if (modal) modal.classList.remove("show");
+      if (gameScreen) gameScreen.style.display = "none";
+      if (homeScreen) homeScreen.style.display = "flex";
+    });
+  }
   
   // Back button functionality
-  backBtn.addEventListener("click", () => {
-    if (confirm("Return to setup? Current game progress will be lost.")) {
-      gameScreen.style.display = "none";
-      backBtn.style.display = "none";
-      setupScreen.style.display = "flex";
-      setupScreen.style.opacity = "1";
-    }
-  });
+  if (backBtn) {
+    backBtn.addEventListener("click", () => {
+      if (confirm("Return to setup? Current game progress will be lost.")) {
+        gameScreen.style.display = "none";
+        backBtn.style.display = "none";
+        setupScreen.style.display = "flex";
+        setupScreen.style.opacity = "1";
+      }
+    });
+  }
 }
 
 /* ==========================================================================

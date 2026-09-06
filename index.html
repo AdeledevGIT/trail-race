@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
-  <meta name="description" content="Hazard Rush — dodge traps, grab shields, warp through wormholes. Play vs AI or a friend! Addictive tile-based racing board game.">
-  <title>Hazard Rush — Premium Arcade Board Game</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="description" content="Hazard Rush — dodge traps, grab shields, warp through wormholes. Play vs AI or a friend! Addictive arcade racing board game.">
+  <title>Hazard Rush — Premium Mobile Arcade Board Game</title>
   
   <!-- PWA & Mobile Install configurations -->
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#080a11">
+  <meta name="theme-color" content="#050816">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Hazard Rush">
@@ -16,10 +16,9 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800;900&family=Outfit:wght@400;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800;900&family=Outfit:wght@500;700;800;900&display=swap" rel="stylesheet">
   
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -27,27 +26,110 @@
   <!-- Toast overlay -->
   <div class="toast-msg" id="toast">🎯 Message</div>
 
-  <div class="app">
-    <!-- HEADER BAR -->
-    <header class="header">
-      <div class="logo">
-        <div class="logo-icon"><i class="fa-solid fa-gamepad"></i></div>
-        <h1 class="logo-text">HAZARD <span>RUSH</span></h1>
-      </div>
-      <div class="header-controls">
-        <button class="btn-icon" id="pwaInstallBtn" title="Install App" style="display: none;">📥</button>
-        <button class="btn-icon" id="backBtn" title="Back to Setup" style="display: none;"><i class="fa-solid fa-arrow-left"></i></button>
-        <button class="btn-icon" id="muteBtn" title="Toggle Sound">🔊</button>
-        <button class="btn-icon" id="restart" title="Restart Game">↻</button>
-      </div>
-    </header>
+  <!-- Background Ambient Stars & Lighting Layer -->
+  <div class="space-ambient-bg" aria-hidden="true">
+    <div class="stars-layer"></div>
+    <div class="glow-orb orb-top-left"></div>
+    <div class="glow-orb orb-bottom-right"></div>
+  </div>
 
-    <!-- SETUP SCREEN -->
-    <div class="setup-screen" id="setupScreen">
-      <!-- ARCADE GAME HUB HEADER -->
-      <div class="arcade-hub-header">
-        <h2 class="setup-title">ARCADE <span>HUB</span></h2>
-        <p class="setup-subtitle">Select a Game &amp; Battle Mode</p>
+  <div class="app">
+
+    <!-- 1. HOME / TITLE SCREEN (Primary Visual Reference Panel 1) -->
+    <div class="home-screen" id="homeScreen">
+      <!-- Home Top Utility Bar -->
+      <div class="screen-top-bar">
+        <button class="btn-icon-circle" id="homeSettingsBtn" title="Settings" type="button">
+          <i class="fa-solid fa-gear"></i>
+        </button>
+        <button class="btn-icon-circle" id="pwaInstallBtn" title="Install App" type="button" style="display: none;">
+          <i class="fa-solid fa-download"></i>
+        </button>
+        <button class="btn-icon-circle" id="homeMuteBtn" title="Toggle Sound" type="button">
+          <i class="fa-solid fa-volume-high"></i>
+        </button>
+      </div>
+
+      <!-- Centered 3D Arcade Title -->
+      <div class="home-title-container">
+        <div class="title-badge-icon">
+          <i class="fa-solid fa-gamepad"></i>
+        </div>
+        <h1 class="home-logo-title">
+          <span class="bolt-left">⚡</span>
+          <span class="title-hazard">HAZARD</span>
+          <span class="title-rush">RUSH</span>
+          <span class="bolt-right">⚡</span>
+        </h1>
+        <p class="home-subtitle">DODGE TRAPS &bull; GRAB SHIELDS &bull; REACH THE GOAL</p>
+      </div>
+
+      <!-- Hero Visual / 3D Board Perspective Artwork -->
+      <div class="home-hero-art">
+        <div class="hero-perspective-grid">
+          <div class="hero-tile hero-tile-left trap"><i class="fa-solid fa-fire"></i></div>
+          <div class="hero-tile hero-tile-center-far bonus"><i class="fa-solid fa-star"></i></div>
+          <div class="hero-tile hero-tile-right wormhole"><i class="fa-solid fa-atom"></i></div>
+          
+          <div class="hero-tile hero-tile-shield shield"><i class="fa-solid fa-shield-halved"></i></div>
+          <div class="hero-astronaut-runner">
+            <div class="astro-glow"></div>
+            <div class="astro-helmet">
+              <div class="astro-visor"></div>
+            </div>
+            <div class="astro-body"></div>
+            <div class="astro-backpack"></div>
+          </div>
+          <div class="hero-tile hero-tile-coin coin"><i class="fa-solid fa-coins"></i></div>
+        </div>
+        <div class="hero-fog-gradient"></div>
+      </div>
+
+      <!-- Home Action Buttons -->
+      <div class="home-actions">
+        <!-- Big Glowing PLAY Button -->
+        <button class="btn-hero-play" id="homePlayBtn" type="button">
+          <span class="play-icon-tri"><i class="fa-solid fa-play"></i></span>
+          <span class="play-text">PLAY</span>
+        </button>
+
+        <!-- Quick Mode Cards Row -->
+        <div class="home-mode-row">
+          <button class="btn-mode-card mode-vs-ai" id="homeVsAiBtn" type="button">
+            <i class="fa-solid fa-robot"></i>
+            <span>VS COMPUTER</span>
+          </button>
+          <button class="btn-mode-card mode-pass-play" id="homePassPlayBtn" type="button">
+            <i class="fa-solid fa-users"></i>
+            <span>PASS &amp; PLAY</span>
+          </button>
+        </div>
+
+        <!-- More Modes Button -->
+        <button class="btn-mode-more" id="homeMoreModesBtn" type="button">
+          <i class="fa-solid fa-wand-magic-sparkles"></i>
+          <span>MORE MODES</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 2. SETUP / LOBBY SCREEN (Visual Cards & Customization) -->
+    <div class="setup-screen" id="setupScreen" style="display: none;">
+      <!-- Setup Top Header with Back to Home -->
+      <div class="lobby-header-bar">
+        <button class="btn-icon-circle" id="setupBackHomeBtn" title="Back to Title" type="button">
+          <i class="fa-solid fa-arrow-left"></i>
+        </button>
+        <div class="lobby-title-wrap">
+          <h2 class="setup-title">ARCADE <span>HUB</span></h2>
+          <span class="setup-subtitle">SELECT MODE &amp; RACERS</span>
+        </div>
+        <button class="btn-icon-circle" id="muteBtn" title="Toggle Sound" type="button">
+          <i class="fa-solid fa-volume-high"></i>
+        </button>
+        <!-- Kept for backward compatibility -->
+        <button class="btn-icon-circle" id="backBtn" style="display:none;" title="Back"></button>
+        <button class="btn-icon-circle" id="restart" style="display:none;" title="Restart"></button>
       </div>
 
       <!-- MAIN GAME SELECTION TABS -->
@@ -80,77 +162,83 @@
         <!-- Sub-Mode Selection Tabs -->
         <div class="mode-selector">
           <button class="mode-tab active" id="modeAi" type="button">
-            🤖 VS Computer
+            <i class="fa-solid fa-robot"></i> VS Computer
           </button>
           <button class="mode-tab" id="modePvp" type="button">
-            👥 Pass &amp; Play
+            <i class="fa-solid fa-users"></i> Pass &amp; Play
           </button>
         </div>
 
         <!-- LEVEL SELECTOR (For Solo vs AI) -->
         <div class="setup-control-group" id="levelSelectorGroup">
-          <label>SELECT RACE LEVEL</label>
-          <div style="display:flex; justify-content:center; margin: 4px 0;">
-            <canvas id="levelPreviewCanvas" width="100" height="120" style="background:#080a11; border-radius:8px; border:1px solid rgba(255,255,255,0.1);"></canvas>
+          <div class="group-header-label">
+            <span>RACE LEVEL</span>
+            <span class="badge-difficulty" id="levelDiffBadge">NORMAL</span>
           </div>
-          <div class="selector-control">
-            <button type="button" class="btn-icon" id="prevLevelBtn">&lt;</button>
-            <span class="selector-value" id="levelValue">Level 1</span>
-            <button type="button" class="btn-icon" id="nextLevelBtn">&gt;</button>
+          <div class="board-preview-container">
+            <canvas id="levelPreviewCanvas" width="120" height="120"></canvas>
+            <div class="selector-control-row">
+              <button type="button" class="btn-stepper" id="prevLevelBtn">&lt;</button>
+              <span class="selector-value" id="levelValue">Level 1</span>
+              <button type="button" class="btn-stepper" id="nextLevelBtn">&gt;</button>
+            </div>
           </div>
           <p class="selector-hint" id="levelHint">Board Shape: Serpentine Grid (L1)</p>
         </div>
 
         <!-- BOARD SHAPE SELECTOR (For PVP) -->
         <div class="setup-control-group" id="shapeSelectorGroup" style="display: none;">
-          <label>SELECT BOARD SHAPE</label>
-          <div style="display:flex; justify-content:center; margin: 4px 0;">
-            <canvas id="shapePreviewCanvas" width="100" height="120" style="background:#080a11; border-radius:8px; border:1px solid rgba(255,255,255,0.1);"></canvas>
+          <div class="group-header-label">
+            <span>BOARD SHAPE</span>
+            <span class="badge-difficulty gold">PVP ARENA</span>
           </div>
-          <div class="selector-control">
-            <button type="button" class="btn-icon" id="prevShapeBtn">&lt;</button>
-            <span class="selector-value" id="shapeValue">Classic Shape (L1)</span>
-            <button type="button" class="btn-icon" id="nextShapeBtn">&gt;</button>
+          <div class="board-preview-container">
+            <canvas id="shapePreviewCanvas" width="120" height="120"></canvas>
+            <div class="selector-control-row">
+              <button type="button" class="btn-stepper" id="prevShapeBtn">&lt;</button>
+              <span class="selector-value" id="shapeValue">Classic Shape (L1)</span>
+              <button type="button" class="btn-stepper" id="nextShapeBtn">&gt;</button>
+            </div>
           </div>
           <p class="selector-hint" id="shapeHint">Cleared level shapes unlocked: 1</p>
         </div>
 
         <!-- Player customization cards -->
         <div class="players-config">
-          <!-- Red Player -->
+          <!-- Red Player Card -->
           <div class="player-config-card red">
             <div class="player-config-header">
-              <span class="player-config-title red-indicator">🔴 PLAYER 1 (RED)</span>
+              <span class="player-config-title red-indicator"><i class="fa-solid fa-circle"></i> PLAYER 1 (RED)</span>
             </div>
             <div class="input-group">
               <label for="redNameInput">Racer Name</label>
               <input type="text" id="redNameInput" value="RED RACER" maxlength="10">
             </div>
             <div class="input-group">
-              <label>Avatar</label>
+              <label>Select Avatar</label>
               <div class="avatar-grid red" id="redAvatars"></div>
             </div>
           </div>
 
-          <!-- Blue Player -->
+          <!-- Blue Player Card -->
           <div class="player-config-card blue" id="bluePlayerConfig" style="opacity: 0.5; pointer-events: none;">
             <div class="player-config-header">
-              <span class="player-config-title blue-indicator">🔵 PLAYER 2 (BLUE)</span>
+              <span class="player-config-title blue-indicator"><i class="fa-solid fa-circle"></i> PLAYER 2 (BLUE)</span>
             </div>
             <div class="input-group">
               <label for="blueNameInput">Racer Name</label>
               <input type="text" id="blueNameInput" value="AI COMP" maxlength="10">
             </div>
             <div class="input-group">
-              <label>Avatar</label>
+              <label>Select Avatar</label>
               <div class="avatar-grid blue" id="blueAvatars"></div>
             </div>
           </div>
         </div>
 
         <!-- Start button -->
-        <button class="btn-primary" id="startGameBtn" type="button" style="margin-top: 6px;">
-          🚀 START THE RACE
+        <button class="btn-primary-launch" id="startGameBtn" type="button">
+          <span>🚀 START THE RACE</span>
         </button>
       </div>
 
@@ -177,8 +265,8 @@
             <p>Roll the die and push that exact count of caps across into your rival's zone. First to clear all own caps wins!</p>
           </div>
 
-          <a href="crosscaps.html" class="btn-primary btn-launch-crosscaps">
-            ⚡ LAUNCH CROSSCAPS ARENA
+          <a href="crosscaps.html" class="btn-primary-launch btn-launch-crosscaps">
+            <span>⚡ LAUNCH CROSSCAPS ARENA</span>
           </a>
         </div>
       </div>
@@ -203,156 +291,317 @@
             </div>
           </div>
 
-          <button type="button" class="btn-primary" style="background: rgba(255,255,255,0.08); border: 1px solid var(--border); box-shadow: none; margin-top: 10px;" onclick="showToast('Stay tuned for new arcade mode drops! 🚀')">
-            🔔 GET NOTIFIED
+          <button type="button" class="btn-primary-launch btn-ghost" onclick="showToast('Stay tuned for new arcade mode drops! 🚀')">
+            <span>🔔 GET NOTIFIED</span>
           </button>
         </div>
       </div>
     </div>
 
-    <!-- MAIN GAME SCREEN (HIDDEN INITIALLY) -->
+    <!-- 3. GAMEPLAY SCREEN (Primary Visual Reference Panel 2) -->
     <div class="screen-wrapper" id="gameScreen" style="display: none;">
-      <!-- TOP HUD: Compact Player Stats -->
-      <div class="hud-top-bar">
-        <!-- Red Racer Card -->
-        <div class="hud-player red" id="redCard">
-          <div class="hud-player-meta">
-            <div class="hud-avatar-name">
-              <span class="hud-emoji" id="redAvatarBadge">🐍</span>
+      <!-- TOP HUD: Compact Premium Game HUD -->
+      <div class="game-top-hud">
+        <!-- Top Row: Pause Button, Level Title, Shield Badge -->
+        <div class="hud-bar-row">
+          <button class="btn-hud-icon" id="btnPauseGame" title="Pause Game" type="button">
+            <i class="fa-solid fa-pause"></i>
+          </button>
+          
+          <div class="hud-center-title">
+            <span class="hud-level-text" id="gameHudLevel">Level 1</span>
+            <div id="levelBadge" style="display: none;">LVL 1</div>
+          </div>
+
+          <div class="hud-shield-badge" id="shieldCountBadge" title="Active Shields">
+            <i class="fa-solid fa-shield-halved"></i>
+            <span id="hudShieldCount">0</span>
+          </div>
+        </div>
+
+        <!-- Integrated Dual-Runner Race Progress Bar -->
+        <div class="hud-race-track" id="raceProgressBar">
+          <div class="race-track-bg"></div>
+          <div class="race-track-fill" id="raceTrackFill"></div>
+          <!-- Red runner pin -->
+          <div class="runner-pin red" id="pinRedRacer" style="left: 0%;">
+            <span class="pin-dot"></span>
+          </div>
+          <!-- Blue runner pin -->
+          <div class="runner-pin blue" id="pinBlueRacer" style="left: 0%;">
+            <span class="pin-dot"></span>
+          </div>
+          <!-- Finish Flag Icon -->
+          <div class="race-flag-icon"><i class="fa-solid fa-flag-checkered"></i></div>
+        </div>
+
+        <!-- Compact Player Cards Bar -->
+        <div class="hud-players-strip">
+          <div class="hud-player-mini red" id="redCard">
+            <div class="mini-meta">
+              <span class="hud-emoji" id="redAvatarBadge">🚀</span>
               <span class="hud-name" id="redNameCard">RED RACER</span>
               <span class="shield-badge" id="redShieldBadge" style="display:none;" title="Shield Active">🛡️</span>
             </div>
             <span class="hud-position" id="redPosition">START</span>
+            <div class="hud-progress-bar" style="display: none;"><div class="hud-progress-fill" id="redProgress"></div></div>
           </div>
-          <div class="hud-progress-bar">
-            <div class="hud-progress-fill" id="redProgress"></div>
-          </div>
-        </div>
 
-      <div class="hud-divider">
-        <div>VS</div>
-        <div id="levelBadge" style="font-size:8px;color:var(--neon-gold);letter-spacing:0.05em;margin-top:2px;">LVL 1</div>
-      </div>
+          <div class="hud-vs-pill">VS</div>
 
-        <!-- Blue Racer Card -->
-        <div class="hud-player blue" id="blueCard">
-          <div class="hud-player-meta">
-            <div class="hud-avatar-name">
-              <span class="hud-emoji" id="blueAvatarBadge">🐉</span>
-              <span class="hud-name" id="blueNameCard">BLUE RACER</span>
+          <div class="hud-player-mini blue" id="blueCard">
+            <div class="mini-meta">
+              <span class="hud-emoji" id="blueAvatarBadge">☄️</span>
+              <span class="hud-name" id="blueNameCard">AI COMP</span>
               <span class="shield-badge" id="blueShieldBadge" style="display:none;" title="Shield Active">🛡️</span>
             </div>
             <span class="hud-position" id="bluePosition">START</span>
-          </div>
-          <div class="hud-progress-bar">
-            <div class="hud-progress-fill" id="blueProgress"></div>
+            <div class="hud-progress-bar" style="display: none;"><div class="hud-progress-fill" id="blueProgress"></div></div>
           </div>
         </div>
       </div>
 
-      <!-- THE BOARD CANVAS -->
+      <!-- THE BOARD CANVAS (Hero of Gameplay Screen) -->
       <div class="board-wrapper">
         <canvas id="canvas" width="380" height="460"></canvas>
       </div>
       
-      <!-- CONTROLS & COMPACT MESSAGE FEED (CENTERED STACK) -->
+      <!-- FLOATING BOTTOM CONTROLS & COMPACT MESSAGE FEED -->
       <div class="hud-controls-bar">
-        <!-- Centered 3D Dice Box -->
-        <div class="dice-box" id="roll">
-          <span id="dice" style="display: none;">?</span>
-          <div class="scene">
-            <div class="cube" id="cube">
-              <!-- Front: 1 -->
-              <div class="cube-face front" data-face="1">
-                <span class="pip"></span>
-              </div>
-              <!-- Back: 6 -->
-              <div class="cube-face back" data-face="6">
-                <span class="pip"></span><span class="pip"></span>
-                <span class="pip"></span><span class="pip"></span>
-                <span class="pip"></span><span class="pip"></span>
-              </div>
-              <!-- Right: 3 -->
-              <div class="cube-face right" data-face="3">
-                <span class="pip"></span><span class="pip"></span>
-                <span class="pip"></span>
-              </div>
-              <!-- Left: 4 -->
-              <div class="cube-face left" data-face="4">
-                <span class="pip"></span><span class="pip"></span>
-                <span class="pip"></span><span class="pip"></span>
-              </div>
-              <!-- Top: 2 -->
-              <div class="cube-face top" data-face="2">
-                <span class="pip"></span><span class="pip"></span>
-              </div>
-              <!-- Bottom: 5 -->
-              <div class="cube-face bottom" data-face="5">
-                <span class="pip"></span><span class="pip"></span>
-                <span class="pip"></span><span class="pip"></span>
-                <span class="pip"></span>
-              </div>
-            </div>
-          </div>
-          <span class="dice-label" id="diceLabel">TAP ROLL</span>
-        </div>
-        
-        <!-- Centered message feeds -->
+        <!-- Floating Contextual Notification Message -->
         <div class="message-box">
           <div class="turn-status-text">
             <span class="turn-bullet" id="turnBullet"></span>
-            <span id="turnName">🔴 RED PLAYER'S TURN</span>
-            <span id="turnStatus" style="margin-left: 6px; color: var(--text-muted); font-weight: 700;">&bull; AWAITING ROLL</span>
+            <span id="turnName">🔴 RED RACER'S TURN</span>
+            <span id="turnStatus">&bull; TAP DICE</span>
           </div>
           <div class="msg-title" id="mainMessage">Roll the dice to start the race!</div>
           <div class="msg-desc" id="hint">Pro-Tip: Land on opponent to knock them back!</div>
+        </div>
+
+        <!-- Centered Controls: Dice Box & Tactical Trap Button -->
+        <div class="dice-box-wrapper">
+          <button type="button" class="btn-action-powerup" id="btnSetTrap" title="Place a sabotage trap behind opponent" style="display: none;">
+            <span class="powerup-icon">💥</span>
+            <span class="powerup-text">SET TRAP</span>
+            <span class="powerup-badge" id="trapChargesBadge">1</span>
+          </button>
+
+          <div class="dice-box" id="roll">
+            <span id="dice" style="display: none;">?</span>
+            <div class="scene">
+              <div class="cube" id="cube">
+                <!-- Front: 1 -->
+                <div class="cube-face front" data-face="1">
+                  <span class="pip pip-center"></span>
+                </div>
+                <!-- Back: 6 -->
+                <div class="cube-face back" data-face="6">
+                  <span class="pip pip-tl"></span><span class="pip pip-tr"></span>
+                  <span class="pip pip-ml"></span><span class="pip pip-mr"></span>
+                  <span class="pip pip-bl"></span><span class="pip pip-br"></span>
+                </div>
+                <!-- Right: 3 -->
+                <div class="cube-face right" data-face="3">
+                  <span class="pip pip-tl"></span>
+                  <span class="pip pip-center"></span>
+                  <span class="pip pip-br"></span>
+                </div>
+                <!-- Left: 4 -->
+                <div class="cube-face left" data-face="4">
+                  <span class="pip pip-tl"></span><span class="pip pip-tr"></span>
+                  <span class="pip pip-bl"></span><span class="pip pip-br"></span>
+                </div>
+                <!-- Top: 2 -->
+                <div class="cube-face top" data-face="2">
+                  <span class="pip pip-tr"></span>
+                  <span class="pip pip-bl"></span>
+                </div>
+                <!-- Bottom: 5 -->
+                <div class="cube-face bottom" data-face="5">
+                  <span class="pip pip-tl"></span><span class="pip pip-tr"></span>
+                  <span class="pip pip-center"></span>
+                  <span class="pip pip-bl"></span><span class="pip pip-br"></span>
+                </div>
+              </div>
+            </div>
+            <span class="dice-label" id="diceLabel">TAP TO ROLL</span>
+          </div>
         </div>
       </div>
       
       <!-- COMPACT MAP LEGEND -->
       <footer class="legend-panel">
-        <span class="legend-item"><span class="legend-dot" style="color:#0dffb0;"></span>Bonus</span>
-        <span class="legend-item"><span class="legend-dot" style="color:#ff6b00;"></span>Trap</span>
-        <span class="legend-item"><span class="legend-dot" style="color:#ff3a5c;"></span>Reset</span>
-        <span class="legend-item"><span class="legend-dot" style="color:#ffcc00;"></span>Goal</span>
+        <span class="legend-item"><span class="legend-dot" style="color:#00d9ff;"></span>Bonus</span>
+        <span class="legend-item"><span class="legend-dot" style="color:#ff7a00;"></span>Trap</span>
+        <span class="legend-item"><span class="legend-dot" style="color:#ff4058;"></span>Reset</span>
+        <span class="legend-item"><span class="legend-dot" style="color:#168bff;"></span>Shield</span>
+        <span class="legend-item"><span class="legend-dot" style="color:#8b4dff;"></span>Portal</span>
+        <span class="legend-item"><span class="legend-dot" style="color:#ffc928;"></span>Goal</span>
       </footer>
     </div>
-  </div>
 
-  <!-- WINNER NOTIFICATION OVERLAY -->
-  <div class="modal" id="modal">
-    <div class="modal-box">
-      <div class="trophy">🏆</div>
-      <h2 class="win-title" id="winner">RED RACER WINS!</h2>
-      <p class="win-sub" id="winSub">You won! What's next?</p>
-      <!-- Next Level (shown only after beating AI on current highest level) -->
-      <button class="btn-primary" id="nextLevelGameBtn" style="display:none; margin-bottom: 8px; background: linear-gradient(135deg, #0dffb0, #00b8ff); color: #07080f;">
-        ⚡ NEXT LEVEL
-      </button>
-      <button class="btn-primary btn-secondary-action" id="playAgain">
-        <span id="playAgainLabel">🔄 Try Again</span>
-      </button>
+  </div> <!-- End .app -->
+
+  <!-- 4. PAUSE MODAL OVERLAY (Visual Reference Panel 3) -->
+  <div class="modal pause-modal" id="pauseModal">
+    <div class="modal-box pause-box">
+      <div class="pause-icon-badge"><i class="fa-solid fa-pause"></i></div>
+      <h2 class="pause-title">PAUSED</h2>
+      
+      <div class="pause-menu-actions">
+        <button class="btn-pause btn-pause-resume" id="btnResumeGame" type="button">
+          <i class="fa-solid fa-play"></i> <span>RESUME</span>
+        </button>
+        <button class="btn-pause btn-pause-restart" id="btnRestartGame" type="button">
+          <i class="fa-solid fa-rotate-right"></i> <span>RESTART</span>
+        </button>
+        <button class="btn-pause btn-pause-settings" id="btnPauseSettings" type="button">
+          <i class="fa-solid fa-gear"></i> <span>SETTINGS</span>
+        </button>
+        <button class="btn-pause btn-pause-quit" id="btnQuitToMenu" type="button">
+          <i class="fa-solid fa-house"></i> <span>QUIT TO MENU</span>
+        </button>
+      </div>
     </div>
   </div>
 
-  <!-- PUNISH OVERLAY MODAL -->
-  <div class="modal" id="punishModal">
-    <div class="modal-box">
-      <div class="trophy" style="font-size: 32px;">⚔️</div>
-      <h2 class="win-title" style="font-size: 18px; margin-bottom: 8px;">YOU CAUGHT THEM!</h2>
-      <p class="win-sub" style="margin-bottom: 16px;">Choose your opponent's fate:</p>
+  <!-- 5. RESULT NOTIFICATION OVERLAY (Visual Reference Panels 4, 5, 6) -->
+  <div class="modal" id="modal">
+    <div class="modal-box result-card">
       
-      <div style="display: flex; flex-direction: column; gap: 6px;">
-        <button class="btn-primary" id="btnPunishKo" style="background: linear-gradient(135deg, #ff3a5c, #ff6b00);">
-          💥 KNOCKOUT (To Start)
+      <!-- State 1: Solo Victory Crown (Panel 4) -->
+      <div class="result-header" id="victoryHeader">
+        <div class="result-badge trophy-crown">
+          <i class="fa-solid fa-crown"></i>
+        </div>
+        <h2 class="win-title gold-glow" id="winner">YOU WIN!</h2>
+        <p class="win-sub" id="winSub">Great job! You completed the race!</p>
+      </div>
+
+      <!-- State 2: Solo Defeat Character (Panel 5) -->
+      <div class="result-header" id="defeatHeader" style="display: none;">
+        <div class="result-badge skull-hazard">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <h2 class="win-title danger-glow" id="defeatTitle">GAME OVER</h2>
+        <p class="win-sub" id="defeatSub">Better luck next time!</p>
+      </div>
+
+      <!-- State 3: PvP Dual Avatars Header (Panel 6) -->
+      <div class="pvp-vs-header" id="pvpVsHeader" style="display: none;">
+        <div class="pvp-combatant left">
+          <div class="pvp-avatar-circle" id="pvpAvatarLeft">🚀</div>
+          <span class="pvp-avatar-label" id="pvpLabelLeft">YOU</span>
+        </div>
+        <div class="pvp-vs-emblem">VS</div>
+        <div class="pvp-combatant right">
+          <div class="pvp-avatar-circle" id="pvpAvatarRight">☄️</div>
+          <span class="pvp-avatar-label" id="pvpLabelRight">PLAYER 2</span>
+        </div>
+      </div>
+
+      <!-- Match Statistics Card (Shown across Win, Loss, and PvP) -->
+      <div class="match-stats-card">
+        <div class="stat-row" id="statRowLevel">
+          <div class="stat-label"><i class="fa-solid fa-star"></i> Level Reached</div>
+          <div class="stat-value" id="statValLevel">1</div>
+        </div>
+        <div class="stat-row">
+          <div class="stat-label"><i class="fa-solid fa-clock"></i> Time</div>
+          <div class="stat-value" id="statValTime">01:15</div>
+        </div>
+        <div class="stat-row">
+          <div class="stat-label"><i class="fa-solid fa-shield-halved"></i> Shields Collected</div>
+          <div class="stat-value" id="statValShields">2</div>
+        </div>
+        <div class="stat-row">
+          <div class="stat-label"><i class="fa-solid fa-coins"></i> Coins Earned</div>
+          <div class="stat-value gold" id="statValCoins">120</div>
+        </div>
+      </div>
+
+      <!-- Result Action Buttons -->
+      <div class="result-actions">
+        <!-- Next Level Button (Shown when beating solo AI level) -->
+        <button class="btn-primary-launch btn-next-level" id="nextLevelGameBtn" style="display:none;" type="button">
+          <span>NEXT LEVEL <i class="fa-solid fa-chevron-right"></i></span>
         </button>
-        <button class="btn-primary" id="btnPunishPush" style="background: linear-gradient(135deg, #ffcc00, #ff6b00); color: #07080f;">
-          👈 PUSH BACK (2 Steps)
+        
+        <!-- Play Again / Try Again Button -->
+        <button class="btn-primary-launch btn-play-again" id="playAgain" type="button">
+          <i class="fa-solid fa-rotate-right"></i>
+          <span id="playAgainLabel">TRY AGAIN</span>
         </button>
-        <button class="btn-primary btn-secondary-action" id="btnPunishForgive">
-          😇 FORGIVE (Do Nothing)
+
+        <!-- Main Menu Return Button -->
+        <button class="btn-primary-launch btn-ghost" id="btnReturnHome" type="button">
+          <i class="fa-solid fa-house"></i> <span>MAIN MENU</span>
         </button>
       </div>
+
+    </div>
+  </div>
+
+  <!-- 6. PUNISHMENT OVERLAY MODAL ("YOU CAUGHT THEM!") -->
+  <div class="modal" id="punishModal">
+    <div class="modal-box punish-card">
+      <div class="punish-header">
+        <div class="punish-icon"><i class="fa-solid fa-crosshairs"></i></div>
+        <h2 class="punish-title">YOU CAUGHT THEM!</h2>
+        <p class="punish-sub">Choose your opponent's fate:</p>
+      </div>
+      
+      <div class="punish-actions">
+        <button class="btn-punish btn-ko" id="btnPunishKo" type="button">
+          <i class="fa-solid fa-burst"></i>
+          <span>KNOCKOUT (To Start)</span>
+        </button>
+        <button class="btn-punish btn-push" id="btnPunishPush" type="button">
+          <i class="fa-solid fa-hand-back-fist"></i>
+          <span>PUSH BACK (2 Steps)</span>
+        </button>
+        <button class="btn-punish btn-forgive" id="btnPunishForgive" type="button">
+          <i class="fa-solid fa-dove"></i>
+          <span>FORGIVE (Do Nothing)</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. QUICK SETTINGS MODAL -->
+  <div class="modal" id="settingsModal">
+    <div class="modal-box settings-card">
+      <div class="settings-header">
+        <div class="settings-icon"><i class="fa-solid fa-gear"></i></div>
+        <h2 class="settings-title">SETTINGS</h2>
+      </div>
+
+      <div class="settings-list">
+        <div class="settings-item">
+          <div class="setting-info">
+            <span class="setting-name">Game Audio</span>
+            <span class="setting-desc">Sound effects &amp; chimes</span>
+          </div>
+          <button class="btn-toggle-switch active" id="modalSoundToggle" type="button">
+            <i class="fa-solid fa-volume-high"></i>
+          </button>
+        </div>
+
+        <div class="settings-item" id="modalPwaItem" style="display: none;">
+          <div class="setting-info">
+            <span class="setting-name">Install Hazard Rush</span>
+            <span class="setting-desc">Add to phone home screen</span>
+          </div>
+          <button class="btn-action-small" id="modalInstallBtn" type="button">
+            INSTALL
+          </button>
+        </div>
+      </div>
+
+      <button class="btn-primary-launch btn-ghost" id="btnCloseSettings" type="button" style="margin-top: 14px;">
+        <span>CLOSE</span>
+      </button>
     </div>
   </div>
 
