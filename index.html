@@ -362,23 +362,23 @@
       </div>
 
       <!-- THE BOARD CANVAS (Hero of Gameplay Screen) -->
-      <div class="board-wrapper">
-        <canvas id="canvas" width="380" height="460"></canvas>
+      <div class="board-wrapper" id="boardWrapper">
+        <canvas id="canvas"></canvas>
+        <!-- Ephemeral Animated Turn Announcement (Puffs away without container) -->
+        <div class="turn-puff-announcement" id="turnPuffAnnouncement"></div>
       </div>
       
-      <!-- FLOATING BOTTOM CONTROLS & COMPACT MESSAGE FEED -->
-      <div class="hud-controls-bar">
-        <!-- Floating Contextual Notification Message -->
-        <div class="message-box">
-          <div class="turn-status-text">
-            <span class="turn-bullet" id="turnBullet"></span>
-            <span id="turnName">🔴 RED RACER'S TURN</span>
-            <span id="turnStatus">&bull; TAP DICE</span>
-          </div>
-          <div class="msg-title" id="mainMessage">Roll the dice to start the race!</div>
-          <div class="msg-desc" id="hint">Pro-Tip: Land on opponent to knock them back!</div>
-        </div>
+      <!-- Hidden message fallback targets for backward compatibility if any script references them -->
+      <div id="hiddenMessageFallbacks" style="display:none;">
+        <span id="turnBullet"></span>
+        <span id="turnName"></span>
+        <span id="turnStatus"></span>
+        <span id="mainMessage"></span>
+        <span id="hint"></span>
+      </div>
 
+      <!-- FLOATING BOTTOM CONTROLS (Clean, No Legend, No Bulky Box) -->
+      <div class="hud-controls-bar">
         <!-- Centered Controls: Dice Box & Tactical Trap Button -->
         <div class="dice-box-wrapper">
           <button type="button" class="btn-action-powerup" id="btnSetTrap" title="Place a sabotage trap behind opponent" style="display: none;">
@@ -389,7 +389,7 @@
 
           <div class="dice-box" id="roll">
             <span id="dice" style="display: none;">?</span>
-            <div class="scene">
+            <div class="scene" id="diceScene">
               <div class="cube" id="cube">
                 <!-- Front: 1 -->
                 <div class="cube-face front" data-face="1">
@@ -429,16 +429,6 @@
           </div>
         </div>
       </div>
-      
-      <!-- COMPACT MAP LEGEND -->
-      <footer class="legend-panel">
-        <span class="legend-item"><span class="legend-dot" style="color:#00d9ff;"></span>Bonus</span>
-        <span class="legend-item"><span class="legend-dot" style="color:#ff7a00;"></span>Trap</span>
-        <span class="legend-item"><span class="legend-dot" style="color:#ff4058;"></span>Reset</span>
-        <span class="legend-item"><span class="legend-dot" style="color:#168bff;"></span>Shield</span>
-        <span class="legend-item"><span class="legend-dot" style="color:#8b4dff;"></span>Portal</span>
-        <span class="legend-item"><span class="legend-dot" style="color:#ffc928;"></span>Goal</span>
-      </footer>
     </div>
 
   </div> <!-- End .app -->

@@ -1060,6 +1060,7 @@ function updateCamera() {
 }
 
 function renderLoop() {
+  resizeCanvasToContainer();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   // Update camera first
@@ -1093,136 +1094,220 @@ function renderLoop() {
   requestAnimationFrame(renderLoop);
 }
 
+function resizeCanvasToContainer() {
+  const boardWrapper = document.getElementById("boardWrapper");
+  if (!boardWrapper) return;
+  const rect = boardWrapper.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  const newW = Math.max(320, Math.floor(rect.width || 380));
+  const newH = Math.max(320, Math.floor(rect.height || 460));
+  if (canvas.width !== newW || canvas.height !== newH) {
+    canvas.width = newW;
+    canvas.height = newH;
+  }
+}
+
+function getLevelTheme(level) {
+  const lvl = Math.max(1, parseInt(level) || 1);
+  if (lvl < 10) {
+    // Level 1-9: Emerald Dawn (Relaxing Cyan & Deep Emerald)
+    return {
+      name: "Emerald Dawn",
+      bgGrad: ["#020c12", "#051e24", "#03282c", "#010e14"],
+      nebula1: { r: 16, g: 185, b: 129, a1: 0.16, a2: 0.05 },
+      nebula2: { r: 0, g: 217, b: 255, a1: 0.14, a2: 0.04 },
+      nebula3: { r: 52, g: 211, b: 153, a1: 0.10, a2: 0.03 },
+      starTint: [140, 240, 220]
+    };
+  } else if (lvl < 20) {
+    // Level 10-19: Amber Solar (Warm Relaxing Amber Nebula)
+    return {
+      name: "Amber Solar",
+      bgGrad: ["#120703", "#220e06", "#2a1508", "#0f0502"],
+      nebula1: { r: 255, g: 140, b: 0, a1: 0.17, a2: 0.05 },
+      nebula2: { r: 255, g: 201, b: 40, a1: 0.13, a2: 0.04 },
+      nebula3: { r: 217, g: 119, b: 6, a1: 0.09, a2: 0.03 },
+      starTint: [255, 225, 170]
+    };
+  } else if (lvl < 30) {
+    // Level 20-29: Crimson Chaos / Nebula (Ruby & Rose Velvet)
+    return {
+      name: "Crimson Aurora",
+      bgGrad: ["#13040a", "#260814", "#2c0a1a", "#0e0308"],
+      nebula1: { r: 255, g: 64, b: 88, a1: 0.16, a2: 0.05 },
+      nebula2: { r: 236, g: 72, b: 153, a1: 0.14, a2: 0.04 },
+      nebula3: { r: 180, g: 30, b: 90, a1: 0.10, a2: 0.03 },
+      starTint: [255, 190, 210]
+    };
+  } else if (lvl < 40) {
+    // Level 30-39: Ice Aurora (Glacial Cobalt & Crystal Blue)
+    return {
+      name: "Ice Aurora",
+      bgGrad: ["#020914", "#06182c", "#08203a", "#020712"],
+      nebula1: { r: 22, g: 139, b: 255, a1: 0.18, a2: 0.06 },
+      nebula2: { r: 125, g: 211, b: 252, a1: 0.15, a2: 0.05 },
+      nebula3: { r: 14, g: 165, b: 233, a1: 0.11, a2: 0.03 },
+      starTint: [190, 235, 255]
+    };
+  } else if (lvl < 50) {
+    // Level 40-49: Violet Cosmos (Royal Amethyst & Deep Indigo)
+    return {
+      name: "Violet Cosmos",
+      bgGrad: ["#090314", "#150826", "#1c0b33", "#06020f"],
+      nebula1: { r: 139, g: 77, b: 255, a1: 0.18, a2: 0.06 },
+      nebula2: { r: 192, g: 132, b: 252, a1: 0.14, a2: 0.04 },
+      nebula3: { r: 99, g: 102, b: 241, a1: 0.11, a2: 0.03 },
+      starTint: [220, 195, 255]
+    };
+  } else {
+    // Level 50+: Starlight Abyss (Prismatic Galaxy)
+    return {
+      name: "Starlight Abyss",
+      bgGrad: ["#02040b", "#090d1f", "#11142e", "#03040c"],
+      nebula1: { r: 0, g: 217, b: 255, a1: 0.18, a2: 0.06 },
+      nebula2: { r: 168, g: 85, b: 247, a1: 0.16, a2: 0.05 },
+      nebula3: { r: 234, g: 179, b: 8, a1: 0.10, a2: 0.03 },
+      starTint: [255, 255, 255]
+    };
+  }
+}
+
 function drawBoardBackgroundDecor(overflow = 0) {
-  const W = canvas.width;
-  const H = canvas.height + overflow * 2;
-  const offY = -overflow;
+  // Ensure full coverage across camera coordinates and screen viewport
+  const minDrawX = -200;
+  const maxDrawX = Math.max(canvas.width, (gameState.virtualWidth || canvas.width)) + 200;
+  const W = maxDrawX - minDrawX;
+  const minDrawY = -overflow;
+  const maxDrawY = Math.max(canvas.height, (gameState.virtualHeight || canvas.height)) + overflow;
+  const H = maxDrawY - minDrawY;
+  const offX = minDrawX;
+  const offY = minDrawY;
   const time = Date.now() * 0.0008;
+
+  const currentLevel = gameState.mode === "ai" ? gameState.currentLevel : gameState.selectedShapeLevel;
+  const theme = getLevelTheme(currentLevel);
 
   ctx.save();
 
-  // 1. Deep Celestial Sapphire Base Gradient (Calming & Relaxing)
-  const bgGrad = ctx.createLinearGradient(0, offY, W, H + offY);
-  bgGrad.addColorStop(0, "#040816");
-  bgGrad.addColorStop(0.3, "#081432");
-  bgGrad.addColorStop(0.65, "#0A183D");
-  bgGrad.addColorStop(1, "#030715");
+  // 1. Dynamic Level Atmosphere Gradient
+  const bgGrad = ctx.createLinearGradient(offX, offY, offX + W, offY + H);
+  bgGrad.addColorStop(0, theme.bgGrad[0]);
+  bgGrad.addColorStop(0.35, theme.bgGrad[1]);
+  bgGrad.addColorStop(0.7, theme.bgGrad[2]);
+  bgGrad.addColorStop(1, theme.bgGrad[3]);
   ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, offY, W, H);
+  ctx.fillRect(offX, offY, W, H);
 
-  // 2. Soothing Aurora & Soft Nebulae Waves
-  // Celestial Violet Aurora (Top Soft Glow)
-  const nebViolet = ctx.createRadialGradient(
-    W * 0.75 + Math.sin(time * 0.5) * 20, 
-    H * 0.2 + offY + Math.cos(time * 0.6) * 15, 
-    20, 
-    W * 0.75, 
-    H * 0.2 + offY, 
-    W * 0.7
-  );
-  nebViolet.addColorStop(0, "rgba(125, 75, 255, 0.16)");
-  nebViolet.addColorStop(0.5, "rgba(100, 60, 220, 0.06)");
-  nebViolet.addColorStop(1, "transparent");
-  ctx.fillStyle = nebViolet;
-  ctx.fillRect(0, offY, W, H);
-
-  // Calming Cyan/Aquamarine Glow (Center-Left)
-  const nebCyan = ctx.createRadialGradient(
-    W * 0.25 + Math.cos(time * 0.4) * 25, 
-    H * 0.55 + offY + Math.sin(time * 0.5) * 20, 
-    15, 
-    W * 0.25, 
-    H * 0.55 + offY, 
+  // 2. Primary Flowing Aurora Nebulae
+  const n1 = theme.nebula1;
+  const neb1 = ctx.createRadialGradient(
+    offX + W * 0.72 + Math.sin(time * 0.45) * 40, 
+    offY + H * 0.25 + Math.cos(time * 0.55) * 35, 
+    30, 
+    offX + W * 0.72, 
+    offY + H * 0.25, 
     W * 0.65
   );
-  nebCyan.addColorStop(0, "rgba(0, 217, 255, 0.14)");
-  nebCyan.addColorStop(0.5, "rgba(22, 139, 255, 0.05)");
-  nebCyan.addColorStop(1, "transparent");
-  ctx.fillStyle = nebCyan;
-  ctx.fillRect(0, offY, W, H);
+  neb1.addColorStop(0, `rgba(${n1.r}, ${n1.g}, ${n1.b}, ${n1.a1})`);
+  neb1.addColorStop(0.55, `rgba(${n1.r}, ${n1.g}, ${n1.b}, ${n1.a2})`);
+  neb1.addColorStop(1, "transparent");
+  ctx.fillStyle = neb1;
+  ctx.fillRect(offX, offY, W, H);
 
-  // Deep Indigo/Teal Ambient Pool (Bottom Right)
-  const nebTeal = ctx.createRadialGradient(
-    W * 0.7 + Math.sin(time * 0.3) * 15, 
-    H * 0.85 + offY, 
-    20, 
-    W * 0.7, 
-    H * 0.85 + offY, 
+  // Calming Secondary Nebula
+  const n2 = theme.nebula2;
+  const neb2 = ctx.createRadialGradient(
+    offX + W * 0.28 + Math.cos(time * 0.38) * 45, 
+    offY + H * 0.6 + Math.sin(time * 0.48) * 35, 
+    25, 
+    offX + W * 0.28, 
+    offY + H * 0.6, 
     W * 0.6
   );
-  nebTeal.addColorStop(0, "rgba(16, 185, 129, 0.09)");
-  nebTeal.addColorStop(0.5, "rgba(6, 95, 70, 0.03)");
-  nebTeal.addColorStop(1, "transparent");
-  ctx.fillStyle = nebTeal;
-  ctx.fillRect(0, offY, W, H);
+  neb2.addColorStop(0, `rgba(${n2.r}, ${n2.g}, ${n2.b}, ${n2.a1})`);
+  neb2.addColorStop(0.55, `rgba(${n2.r}, ${n2.g}, ${n2.b}, ${n2.a2})`);
+  neb2.addColorStop(1, "transparent");
+  ctx.fillStyle = neb2;
+  ctx.fillRect(offX, offY, W, H);
+
+  // Deep Ambient Glow
+  const n3 = theme.nebula3;
+  const neb3 = ctx.createRadialGradient(
+    offX + W * 0.6 + Math.sin(time * 0.3) * 30, 
+    offY + H * 0.88, 
+    20, 
+    offX + W * 0.6, 
+    offY + H * 0.88, 
+    W * 0.55
+  );
+  neb3.addColorStop(0, `rgba(${n3.r}, ${n3.g}, ${n3.b}, ${n3.a1})`);
+  neb3.addColorStop(0.6, `rgba(${n3.r}, ${n3.g}, ${n3.b}, ${n3.a2})`);
+  neb3.addColorStop(1, "transparent");
+  ctx.fillStyle = neb3;
+  ctx.fillRect(offX, offY, W, H);
 
   // 3. Subtle Relaxing Silk Grid / Constellation Guide Lines
-  ctx.strokeStyle = "rgba(0, 217, 255, 0.025)";
+  ctx.strokeStyle = `rgba(${n2.r}, ${n2.g}, ${n2.b}, 0.025)`;
   ctx.lineWidth = 1;
-  const gridSize = 46;
-  for (let x = 0; x < W; x += gridSize) {
+  const gridSize = 50;
+  for (let x = offX; x < offX + W; x += gridSize) {
     ctx.beginPath();
     ctx.moveTo(x, offY);
-    ctx.lineTo(x, H + offY);
+    ctx.lineTo(x, offY + H);
     ctx.stroke();
   }
-  for (let y = offY; y < H + offY; y += gridSize) {
+  for (let y = offY; y < offY + H; y += gridSize) {
     ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(W, y);
+    ctx.moveTo(offX, y);
+    ctx.lineTo(offX + W, y);
     ctx.stroke();
   }
 
-  // 4. Undulating Aurora Ribbons (Silky ambient glow)
+  // 4. Undulating Aurora Ribbons (Silky ambient glow across full width)
   ctx.save();
   for (let r = 0; r < 2; r++) {
     ctx.beginPath();
-    const ribbonBaseY = offY + H * (0.35 + r * 0.32);
-    ctx.moveTo(0, ribbonBaseY);
-    for (let px = 0; px <= W; px += 20) {
-      const waveY = Math.sin((px * 0.008) + (time * 1.2) + (r * 2)) * 18 +
-                    Math.cos((px * 0.015) - (time * 0.8)) * 10;
+    const ribbonBaseY = offY + H * (0.32 + r * 0.34);
+    ctx.moveTo(offX, ribbonBaseY);
+    for (let px = offX; px <= offX + W; px += 25) {
+      const waveY = Math.sin(((px - offX) * 0.007) + (time * 1.1) + (r * 2.2)) * 22 +
+                    Math.cos(((px - offX) * 0.013) - (time * 0.75)) * 12;
       ctx.lineTo(px, ribbonBaseY + waveY);
     }
-    ctx.lineTo(W, H + offY);
-    ctx.lineTo(0, H + offY);
+    ctx.lineTo(offX + W, offY + H);
+    ctx.lineTo(offX, offY + H);
     ctx.closePath();
 
-    const ribbonGrad = ctx.createLinearGradient(0, ribbonBaseY - 20, 0, ribbonBaseY + 60);
-    if (r === 0) {
-      ribbonGrad.addColorStop(0, "rgba(0, 217, 255, 0.04)");
-      ribbonGrad.addColorStop(1, "transparent");
-    } else {
-      ribbonGrad.addColorStop(0, "rgba(139, 77, 255, 0.035)");
-      ribbonGrad.addColorStop(1, "transparent");
-    }
+    const ribbonGrad = ctx.createLinearGradient(offX, ribbonBaseY - 25, offX, ribbonBaseY + 70);
+    const cr = r === 0 ? n2 : n1;
+    ribbonGrad.addColorStop(0, `rgba(${cr.r}, ${cr.g}, ${cr.b}, 0.05)`);
+    ribbonGrad.addColorStop(1, "transparent");
     ctx.fillStyle = ribbonGrad;
     ctx.fill();
   }
   ctx.restore();
 
   // 5. Gentle Floating Stardust & Shimmering Constellations
-  for (let i = 0; i < 48; i++) {
-    const seedX = ((i * 79 + 31) % W);
-    const driftY = (time * 10 * ((i % 3) + 1)) % H;
-    const seedY = ((i * 137 + driftY) % H) + offY;
-    const pulse = 0.35 + 0.65 * Math.sin(time * 2.2 + i * 1.5);
-    const starR = (i % 6 === 0) ? 1.6 : (i % 4 === 0 ? 1.2 : 0.75);
+  const tint = theme.starTint;
+  for (let i = 0; i < 54; i++) {
+    const seedX = offX + (((i * 83 + 29) % W + W) % W);
+    const driftY = (time * 11 * ((i % 3) + 1)) % H;
+    const seedY = offY + (((i * 149 + driftY) % H + H) % H);
+    const pulse = 0.35 + 0.65 * Math.sin(time * 2.3 + i * 1.6);
+    const starR = (i % 6 === 0) ? 1.7 : (i % 4 === 0 ? 1.2 : 0.75);
 
     ctx.beginPath();
     ctx.arc(seedX, seedY, starR, 0, Math.PI * 2);
-    if (i % 5 === 0) {
-      ctx.fillStyle = `rgba(130, 215, 255, ${pulse * 0.85})`;
-    } else if (i % 7 === 0) {
-      ctx.fillStyle = `rgba(195, 160, 255, ${pulse * 0.8})`;
+    if (i % 3 === 0) {
+      ctx.fillStyle = `rgba(${tint[0]}, ${tint[1]}, ${tint[2]}, ${pulse * 0.85})`;
     } else {
       ctx.fillStyle = `rgba(255, 255, 255, ${pulse * 0.75})`;
     }
     ctx.fill();
 
     // Occasional soft cross shimmer
-    if (i % 11 === 0) {
-      ctx.strokeStyle = `rgba(255, 255, 255, ${pulse * 0.35})`;
+    if (i % 9 === 0) {
+      ctx.strokeStyle = `rgba(${tint[0]}, ${tint[1]}, ${tint[2]}, ${pulse * 0.4})`;
       ctx.lineWidth = 0.7;
       ctx.beginPath();
       ctx.moveTo(seedX - 3.5, seedY);
@@ -1791,8 +1876,15 @@ async function triggerRoll() {
   gameState.busy = true;
 
   const cube = document.getElementById("cube");
+  const diceScene = document.getElementById("diceScene");
   rollButton.classList.add("disabled");
   rollButton.classList.add("dice-shake");
+  if (diceScene) {
+    diceScene.classList.remove("rolling-across");
+    // Force reflow to re-trigger animation
+    void diceScene.offsetWidth;
+    diceScene.classList.add("rolling-across");
+  }
   diceLabel.textContent = "ROLLING...";
 
   mainMessage.textContent = "Rolling the dice...";
@@ -1819,6 +1911,9 @@ async function triggerRoll() {
   }
 
   rollButton.classList.remove("dice-shake");
+  if (diceScene) {
+    diceScene.classList.remove("rolling-across");
+  }
   diceLabel.textContent = "TAP ROLL";
   
   // Wait for transition to settle
@@ -2125,6 +2220,25 @@ async function resolveSpecialTile(player) {
 }
 
 /* ==========================================================================
+   EPHEMERAL TURN ANNOUNCEMENT (No Box, Bare Animated Words, Puffs Away)
+   ========================================================================== */
+function triggerTurnPuffAnnouncement(playerIdx) {
+  const el = document.getElementById("turnPuffAnnouncement");
+  if (!el) return;
+  const player = gameState.players[playerIdx];
+  if (!player) return;
+
+  const colorClass = playerIdx === 0 ? "puff-red" : "puff-blue";
+  const icon = playerIdx === 0 ? "🔴" : "🔵";
+  el.className = `turn-puff-announcement ${colorClass}`;
+  el.textContent = `${icon} ${player.name} TURN`;
+
+  // Force DOM restart of CSS keyframe
+  void el.offsetWidth;
+  el.classList.add("puff-anim");
+}
+
+/* ==========================================================================
    TURN ROTATION
    ========================================================================== */
 function switchTurn() {
@@ -2156,6 +2270,9 @@ function switchTurn() {
   hint.textContent = "Roll the dice to navigate.";
 
   updateHUD();
+
+  // Trigger container-free typography puff: "🔴 RED TURN" / "🔵 BLUE TURN"
+  triggerTurnPuffAnnouncement(gameState.currentPlayer);
 
   // If AI Mode and CPU's turn, trigger computer choice
   if (gameState.mode === "ai" && gameState.currentPlayer === 1) {
@@ -2385,7 +2502,9 @@ function resetGame(advanceLevel = false) {
 
   logAction(`🎮 New Game started in <strong>${gameState.mode === "ai" ? "VS AI" : "PVP"} Mode</strong>! Level: ${gameState.currentLevel}`);
   
+  resizeCanvasToContainer();
   updateHUD();
+  triggerTurnPuffAnnouncement(0);
 }
 
 function wait(ms) {
@@ -2526,9 +2645,11 @@ function initEvents() {
    INITIALIZATION LAUNCHER
    ========================================================================== */
 window.addEventListener("DOMContentLoaded", () => {
-  // Initial elements sizing
-  canvas.width = 380;
-  canvas.height = 460;
+  resizeCanvasToContainer();
+  window.addEventListener("resize", resizeCanvasToContainer);
+  window.addEventListener("orientationchange", () => {
+    setTimeout(resizeCanvasToContainer, 150);
+  });
 
   loadStats(); // Load stats first to get cleared levels!
   buildBoard();
